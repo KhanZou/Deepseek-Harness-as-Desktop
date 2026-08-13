@@ -1,4 +1,0 @@
-# dsh-demo-settings bundle patch.
-- insert:
-    - id: demo-settings
-      name: '@dsh-external/dsh-demo-settings'

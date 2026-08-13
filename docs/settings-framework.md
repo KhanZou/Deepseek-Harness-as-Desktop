@@ -94,10 +94,7 @@ The **Desktop** tab in this repo (dsh-desktop-settings) is itself a framework
 consumer (dogfooding): it registers its close-behavior/auto-start/notification
 items, a test-notify action, and a custom skin center through the framework.
 
-See `dsh-demo-settings` in this repo: it registers a "Demo" tab (localized),
-adds text/select/toggle items, and subscribes to `demo.notify` to send a
-Windows toast whenever the value changes — demonstrating cross-plugin
-communication through the framework.
+See [dsh-settings-framework/README.md](../dsh-settings-framework/README.md) for the full consumer API and a complete example plugin.
 
 ## Roadmap
 
