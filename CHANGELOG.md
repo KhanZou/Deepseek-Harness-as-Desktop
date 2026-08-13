@@ -2,6 +2,22 @@
 
 All notable changes to **DeepSeek Harness as Desktop**.
 
+## [0.4.2] - 2026-08-14
+
+### Added
+- `dsh-settings-framework`: generic settings framework for plugins
+  (`registerTab`/`registerItem`/`get`/`set`/`subscribe`), with `action` and
+  `custom` item types.
+- `dsh-demo-settings`: example framework consumer.
+
+### Changed
+- The Desktop settings tab now runs **on the framework** (dogfooding): its
+  options, test-notify action, and skin center are declared through the
+  framework.
+- The exe `/api/settings` endpoint returns a merged view (typed desktop
+  options + generic plugin key-value map); known keys route to the typed
+  updater.
+
 ## [0.4.1] - 2026-08-14
 
 ### Changed

@@ -48,7 +48,7 @@ sf.registerTab({ id: 'my-tab', label: () => t('nav'), order: 60 })
 sf.registerItem({
   tabId: 'my-tab',
   key: 'my.plugin.mode',
-  type: 'toggle' | 'select' | 'text' | 'number',
+  type: 'toggle' | 'select' | 'text' | 'number' | 'action' | 'custom',
   label: t('modeLabel'),
   hint: t('modeHint'),
   defaultValue: 'auto',
@@ -77,15 +77,22 @@ const off = sf.subscribe('my.plugin.mode', (v) => { … })   // cross-plugin syn
 ## Backends
 
 **A. Desktop client (default, implemented).** `DshDesktop.exe` exposes
-`GET/POST /api/settings` backed by a generic key-value map persisted in
-`config.json` (`settings` object). Any key not owned by the typed desktop
-options goes into this map — the exe acts as a neutral settings store.
+`GET/POST /api/settings` returning a **merged view**: the typed desktop options
+(`closeBehavior`, `autoStart`, `notifyOnComplete`, `trayHint`, `activeSkin`, …)
+plus a generic key-value map persisted in `config.json` (`settings` object).
+Known typed keys route to the typed updater (with side effects such as
+registry sync); anything else lands in the map — the exe acts as a neutral
+settings store.
 
 **B. Harness host (future).** Bind a namespace through `ctx.settingsScope` for
 settings the DSH server owns; the framework would expose the same
 `get/set/subscribe` surface with a `backend: 'host'` option.
 
 ## Example consumer
+
+The **Desktop** tab in this repo (dsh-desktop-settings) is itself a framework
+consumer (dogfooding): it registers its close-behavior/auto-start/notification
+items, a test-notify action, and a custom skin center through the framework.
 
 See `dsh-demo-settings` in this repo: it registers a "Demo" tab (localized),
 adds text/select/toggle items, and subscribes to `demo.notify` to send a
