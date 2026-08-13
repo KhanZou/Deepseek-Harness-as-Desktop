@@ -48,17 +48,21 @@ Deepseek-Harness-as-Desktop/
    corepack pnpm run build
    ```
 
-2. **Run the desktop app** — double-click `dsh-desktop-window\shell\DshDesktop.exe`
-   (or build it from `Program.cs` — see below). It starts the backend if needed
-   and opens the DSH UI in a native window.
+2. **Place the app anywhere** — copy the `dsh-desktop-window` folder anywhere
+   (e.g. `D:\dsh-desktop-window`) and double-click
+   `dsh-desktop-window\shell\DshDesktop.exe` (or build it from `Program.cs` — see
+   below). It starts the backend if needed and opens the DSH UI in a native window.
 
-3. **Install the plugins** into the web profile:
+3. **Install the plugins** into the web profile (point the paths at where you
+   put the folders):
    ```powershell
    cd /d "D:\deepseek harness"
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-window
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-settings
    ```
-   Restart the desktop app. Open **Settings → Desktop** to configure options and the skin center.
+   Restart the desktop app. Open **Settings → Desktop** to configure options and
+   the skin center. Completion notifications are enabled by default; the
+   "tray balloon on minimize/close" hint is off by default (toggle in Settings).
 
 > The host plugin (`dsh-desktop-window`) is optional but recommended: it sends
 > `turn/end` toasts and keeps `skins.json` fresh for the skin center. The

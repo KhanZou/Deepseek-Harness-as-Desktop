@@ -48,7 +48,8 @@ Deepseek-Harness-as-Desktop/
    corepack pnpm run build
    ```
 
-2. **运行桌面客户端**——双击 `dsh-desktop-window\shell\DshDesktop.exe`
+2. **把应用放到任意位置**——复制 `dsh-desktop-window` 文件夹到任意位置
+   （如 `D:\dsh-desktop-window`），双击 `dsh-desktop-window\shell\DshDesktop.exe`
    （或按下文从 `Program.cs` 编译）。它会按需拉起后端并打开原生窗口。
 
 3. **安装插件**到 web profile：
@@ -57,7 +58,7 @@ Deepseek-Harness-as-Desktop/
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-window
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-settings
    ```
-   重启桌面客户端，打开 **设置 → 桌面客户端** 配置选项与皮肤中心。
+   重启桌面客户端，打开 **设置 → 桌面客户端** 配置选项与皮肤中心。\n   完成通知默认开启；"缩到托盘时显示提示"默认关闭（可在设置中开关）。
 
 > 宿主插件（`dsh-desktop-window`）可选但推荐：负责 `turn/end` Toast 和皮肤清单
 > `skins.json` 的刷新。桌面客户端自己启动后端时以 `DSH_DESKTOP_AUTO=0`

@@ -2,6 +2,20 @@
 
 All notable changes to **DeepSeek Harness as Desktop**.
 
+## [0.4.1] - 2026-08-14
+
+### Changed
+- Desktop app and plugins are now **relocatable**: config, data, and script
+  paths derive from their own location instead of hardcoded `D:\` paths; the
+  only machine-specific path is the DeepSeek Harness checkout
+  (`D:\deepseek harness` by default, overridable via `--workdir`).
+- Task-completion notifications are **enabled by default**.
+- New **"Tray balloon on minimize/close"** option in the Desktop settings tab
+  (default **off** — no more repeated balloon when minimized to tray).
+
+### Fixed
+- Toast messages are transported via a UTF-8 JSON file to preserve CJK text.
+
 ## [0.4.0] - 2026-08-14
 
 ### Added

@@ -18,12 +18,15 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { fileURLToPath } from 'node:url'
 
 export const name = 'desktop-window'
 
-const SHELL = 'D:\\dsh-desktop-window\\shell\\DshDesktop.exe'
-const CONFIG_FILE = 'D:\\dsh-desktop-window\\config.json'
-const SKINS_FILE = 'D:\\dsh-desktop-window\\skins.json'
+// Relocatable: all runtime paths derive from this plugin's own location.
+const PLUGIN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const SHELL = path.join(PLUGIN_DIR, 'shell', 'DshDesktop.exe')
+const CONFIG_FILE = path.join(PLUGIN_DIR, 'config.json')
+const SKINS_FILE = path.join(PLUGIN_DIR, 'skins.json')
 const EXE_API = 'http://127.0.0.1:3980'
 
 const BROWSERS = [
@@ -135,7 +138,7 @@ function scanForSkins() {
   const seen = new Set()
   const roots = [
     path.join(os.homedir(), '.dsh', 'profiles', 'web', 'node_modules'),
-    'D:\\dsh-deep-whale',
+    ...(process.env.DSH_SKIN_ROOTS ? process.env.DSH_SKIN_ROOTS.split(';').filter(Boolean) : []),
   ]
   const walk = (dir, depth) => {
     if (depth > 5) return
@@ -228,6 +231,7 @@ export function apply(ctx, config = {}) {
     try {
       if (event && event.type === 'turn/end') {
         const conf = readConfig()
+        log('turn/end detected (notifyOnComplete=' + !!conf.notifyOnComplete + ')')
         if (conf.notifyOnComplete) {
           notifyWindows('DeepSeek Harness', '任务已完成 / Task completed')
           log('turn/end -> notification sent')

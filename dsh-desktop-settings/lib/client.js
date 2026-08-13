@@ -30,6 +30,8 @@ window.__ModuleLoader__.load({
 				autoStartHint: "登录 Windows 后自动启动 DshDesktop.exe 并拉起服务。",
 				notifyLabel: "会话完成时发送 Windows 通知",
 				notifyHint: "后台任务每完成一轮回答，通过系统通知提醒你。",
+				trayHintLabel: "缩到托盘时显示提示",
+				trayHintHint: "关闭后最小化/关闭窗口不再反复弹出托盘提示。",
 				testNotify: "发送测试通知",
 				skinTitle: "皮肤中心",
 				skinIntro: "几选一：选择 DSH 默认外观或已安装皮肤，切换后界面自动刷新。",
@@ -54,6 +56,8 @@ window.__ModuleLoader__.load({
 				autoStartHint: "Start DshDesktop.exe and the backend automatically after you log in.",
 				notifyLabel: "Notify when a task completes",
 				notifyHint: "Shows a Windows notification when a background task finishes a turn.",
+				trayHintLabel: "Tray balloon on minimize/close",
+				trayHintHint: "When off, minimizing/closing no longer shows a repeated tray balloon.",
 				testNotify: "Send test notification",
 				skinTitle: "Skin Center",
 				skinIntro: "Pick one: choose the DSH default look or an installed skin; the UI refreshes automatically after switching.",
@@ -207,6 +211,10 @@ window.__ModuleLoader__.load({
 				SectionRow({ label: t("notifyLabel"),
 					control: h("input", { type: "checkbox", checked: !!cfg.notifyOnComplete, onChange: function (e) { update("notifyOnComplete", e.target.checked); } }) }),
 				Hint({ text: t("notifyHint") }),
+
+				SectionRow({ label: t("trayHintLabel"),
+					control: h("input", { type: "checkbox", checked: !!cfg.trayHint, onChange: function (e) { update("trayHint", e.target.checked); } }) }),
+				Hint({ text: t("trayHintHint") }),
 
 				h("div", { style: { margin: "8px 0" } },
 					h("button", { onClick: sendTestNotify, style: { padding: "6px 14px", cursor: "pointer" } }, t("testNotify"))),

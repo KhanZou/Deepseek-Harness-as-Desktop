@@ -21,7 +21,8 @@ namespace DshDesktop
     {
         public string closeBehavior = "tray";   // "tray" | "exit"
         public bool autoStart = false;
-        public bool notifyOnComplete = false;
+        public bool notifyOnComplete = true;
+        public bool trayHint = false;
         public string desiredSkin = "";
         public string activeSkin = "";
         public int apiPort = 3980;
@@ -29,7 +30,8 @@ namespace DshDesktop
 
     static class Program
     {
-        public static readonly string BaseDir = "D:\\dsh-desktop-window";
+        public static readonly string AppDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        public static readonly string BaseDir = Directory.GetParent(AppDir).FullName;
         public static readonly string ConfigPath = BaseDir + "\\config.json";
 
         [STAThread]
@@ -39,9 +41,9 @@ namespace DshDesktop
             int width = 1440;
             int height = 900;
             int port = 3080;
-            string userData = BaseDir + "\\.wv2-profile";
+            string userData = Program.BaseDir + "\\.wv2-profile";
             string serverWorkDir = "D:\\deepseek harness";
-            string serverLog = "D:\\deepseek harness\\dsh-web.log";
+            string serverLog = serverWorkDir + "\\dsh-web.log";
             string serverCmd = "C:\\Program Files\\nodejs\\corepack.cmd";
 
             for (int i = 0; i < args.Length; i++)
@@ -162,8 +164,8 @@ namespace DshDesktop
         {
             try
             {
-                string script = "D:\\dsh-desktop-window\\shell\\toast.ps1";
-                string toastFile = "D:\\dsh-desktop-window\\shell\\.toast.json";
+                string script = Program.AppDir + "\\toast.ps1";
+                string toastFile = Program.AppDir + "\\.toast.json";
                 if (!File.Exists(script)) { ShowBalloon(title, message); return; }
                 JavaScriptSerializer ser = new JavaScriptSerializer();
                 ser.MaxJsonLength = int.MaxValue;
@@ -244,6 +246,7 @@ namespace DshDesktop
             else if (key == "notifyOnComplete") cfg.notifyOnComplete = (value == "true");
             else if (key == "desiredSkin") cfg.desiredSkin = value;
             else if (key == "activeSkin") cfg.activeSkin = value;
+            else if (key == "trayHint") cfg.trayHint = (value == "true");
             ConfigStore.Save(cfg);
             if (key == "autoStart") SyncAutoStart(cfg.autoStart);
         }
@@ -272,7 +275,7 @@ namespace DshDesktop
             bool ready = await WaitForServerAsync();
             if (!ready)
             {
-                statusLabel.Text = "未能连接到 DeepSeek Harness 服务，请检查 D:\\deepseek harness 环境。";
+                statusLabel.Text = "未能连接到 DeepSeek Harness 服务，请检查服务目录（--workdir）配置。";
                 return;
             }
             await LoadWebViewAsync();
@@ -377,7 +380,7 @@ namespace DshDesktop
             if (WindowState == FormWindowState.Minimized && !quitRequested)
             {
                 Hide();
-                trayIcon.ShowBalloonTip(1200, "DeepSeek Harness", "已最小化到系统托盘，后台持续运行。", ToolTipIcon.Info);
+                if (cfg.trayHint) trayIcon.ShowBalloonTip(1200, "DeepSeek Harness", "已最小化到系统托盘，后台持续运行。", ToolTipIcon.Info);
             }
         }
 
@@ -396,7 +399,7 @@ namespace DshDesktop
                 }
                 e.Cancel = true;
                 Hide();
-                trayIcon.ShowBalloonTip(1200, "DeepSeek Harness", "已最小化到系统托盘，后台持续运行。", ToolTipIcon.Info);
+                if (cfg.trayHint) trayIcon.ShowBalloonTip(1200, "DeepSeek Harness", "已最小化到系统托盘，后台持续运行。", ToolTipIcon.Info);
                 return;
             }
             trayIcon.Visible = false;
@@ -425,6 +428,7 @@ namespace DshDesktop
                         if (map.TryGetValue("notifyOnComplete", out v)) c.notifyOnComplete = Convert.ToBoolean(v);
                         if (map.TryGetValue("desiredSkin", out v)) c.desiredSkin = Convert.ToString(v);
                         if (map.TryGetValue("activeSkin", out v)) c.activeSkin = Convert.ToString(v);
+                        if (map.TryGetValue("trayHint", out v)) c.trayHint = Convert.ToBoolean(v);
                         if (map.TryGetValue("apiPort", out v)) { int p; if (int.TryParse(Convert.ToString(v), out p)) c.apiPort = p; }
                     }
                     return c;

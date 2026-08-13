@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = 'Stop'
 $AppId = 'DeepSeekHarness.Desktop'
-$exe = 'D:\dsh-desktop-window\shell\DshDesktop.exe'
+$exe = Join-Path $shellDir 'DshDesktop.exe'
 $shellDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\DeepSeek Harness.lnk'
 $toastFile = Join-Path $shellDir '.toast.json'
