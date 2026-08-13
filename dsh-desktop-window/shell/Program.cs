@@ -242,7 +242,38 @@ namespace DshDesktop
             }
         }
 
+        private static readonly string[] KnownKeys = new string[]
+        {
+            "closeBehavior", "autoStart", "notifyOnComplete", "trayHint",
+            "desiredSkin", "activeSkin", "serverWorkDir", "apiPort",
+        };
+
         public Config GetConfig() { return cfg; }
+
+        /// Merged view for the generic /api/settings endpoint: typed desktop
+        /// options plus the plugin key-value map.
+        public Dictionary<string, object> GetSettingsView()
+        {
+            Dictionary<string, object> view = new Dictionary<string, object>();
+            view["closeBehavior"] = cfg.closeBehavior;
+            view["autoStart"] = cfg.autoStart;
+            view["notifyOnComplete"] = cfg.notifyOnComplete;
+            view["trayHint"] = cfg.trayHint;
+            view["desiredSkin"] = cfg.desiredSkin;
+            view["activeSkin"] = cfg.activeSkin;
+            view["serverWorkDir"] = cfg.serverWorkDir;
+            view["apiPort"] = cfg.apiPort;
+            foreach (KeyValuePair<string, string> kv in cfg.settings) view[kv.Key] = kv.Value;
+            return view;
+        }
+
+        /// Generic setter: known typed keys go through UpdateConfig (with side
+        /// effects such as registry sync); anything else lands in the map.
+        public void SetSetting(string key, string value)
+        {
+            if (Array.IndexOf(KnownKeys, key) >= 0) UpdateConfig(key, value);
+            else { cfg.settings[key] = value; ConfigStore.Save(cfg); }
+        }
 
         public void UpdateConfig(string key, string value)
         {
@@ -635,7 +666,7 @@ namespace DshDesktop
                 }
                 else if (method == "GET" && path == "/api/settings")
                 {
-                    response = ser.Serialize(form.GetConfig().settings);
+                    response = ser.Serialize(form.GetSettingsView());
                 }
                 else if (method == "POST" && path == "/api/settings")
                 {
@@ -651,8 +682,8 @@ namespace DshDesktop
                         }
                         if (key != null && value != null)
                         {
-                            form.UpdateConfig(Convert.ToString(key), Convert.ToString(value));
-                            response = ser.Serialize(form.GetConfig().settings);
+                            form.SetSetting(Convert.ToString(key), Convert.ToString(value));
+                            response = ser.Serialize(form.GetSettingsView());
                         }
                         else
                         {

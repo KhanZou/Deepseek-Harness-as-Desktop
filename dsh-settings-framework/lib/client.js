@@ -178,6 +178,17 @@ window.__ModuleLoader__.load({
 			}
 			return h("div", { style: { padding: "16px", maxWidth: "640px" } },
 				myItems.map(function (it) {
+					if (it.type === "action") {
+						return h("div", { key: it.key, style: { padding: "8px 0" } },
+							h("button", {
+								onClick: function () { try { if (it.action) it.action({ get: get, set: set }); } catch (e) { } },
+								style: { padding: "6px 14px", cursor: "pointer" },
+							}, it.label));
+					}
+					if (it.type === "custom" && typeof it.render === "function") {
+						return h("div", { key: it.key, style: { padding: "8px 0" } },
+							it.render({ get: get, set: set, h: h, React: React, refresh: refresh }));
+					}
 					return h("div", { key: it.key },
 						ItemRow({ item: it }),
 						it.hint ? h("div", { style: { fontSize: "12px", opacity: ".75", padding: "0 0 4px" } }, it.hint) : null);
