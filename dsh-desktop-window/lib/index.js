@@ -27,6 +27,7 @@ const PLUGIN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.
 const SHELL = path.join(PLUGIN_DIR, 'shell', 'DshDesktop.exe')
 const CONFIG_FILE = path.join(PLUGIN_DIR, 'config.json')
 const SKINS_FILE = path.join(PLUGIN_DIR, 'skins.json')
+const USER_DATA_DIR = path.join(PLUGIN_DIR, '.wv2-profile')
 const EXE_API = 'http://127.0.0.1:3980'
 
 const BROWSERS = [
@@ -43,7 +44,7 @@ const DEFAULTS = {
   delayMs: 1000,
   timeoutMs: 120000,
   pollIntervalMs: 1000,
-  userDataDir: 'D:\\dsh-desktop-window\\.wv2-profile',
+  userDataDir: '',
   autoLaunch: true,
 }
 
@@ -100,7 +101,7 @@ function openWindow(cfg) {
       '--url', cfg.url,
       '--width', String(cfg.width),
       '--height', String(cfg.height),
-      '--user-data', cfg.userDataDir,
+      '--user-data', cfg.userDataDir || USER_DATA_DIR,
     ]
     const child = spawn(SHELL, args, { detached: true, stdio: 'ignore' })
     child.unref()
@@ -122,7 +123,7 @@ function openWindow(cfg) {
   const args = [
     `--app=${cfg.url}`,
     `--window-size=${cfg.width},${cfg.height}`,
-    `--user-data-dir=${cfg.userDataDir}`,
+    `--user-data-dir=${cfg.userDataDir || USER_DATA_DIR}`,
     '--no-first-run',
     '--no-default-browser-check',
   ]

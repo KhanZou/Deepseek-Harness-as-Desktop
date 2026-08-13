@@ -25,6 +25,7 @@ namespace DshDesktop
         public bool trayHint = false;
         public string desiredSkin = "";
         public string activeSkin = "";
+        public string serverWorkDir = "";
         public int apiPort = 3980;
     }
 
@@ -42,8 +43,8 @@ namespace DshDesktop
             int height = 900;
             int port = 3080;
             string userData = Program.BaseDir + "\\.wv2-profile";
-            string serverWorkDir = "D:\\deepseek harness";
-            string serverLog = serverWorkDir + "\\dsh-web.log";
+            string serverWorkDir = "";
+            string serverLog = "";
             string serverCmd = "C:\\Program Files\\nodejs\\corepack.cmd";
 
             for (int i = 0; i < args.Length; i++)
@@ -94,11 +95,13 @@ namespace DshDesktop
             this.url = url;
             this.userData = userData;
             this.port = port;
-            this.serverWorkDir = serverWorkDir;
-            this.serverLog = serverLog;
             this.serverCmd = serverCmd;
 
             cfg = ConfigStore.Load();
+            this.serverWorkDir = string.IsNullOrEmpty(serverWorkDir)
+                ? (string.IsNullOrEmpty(cfg.serverWorkDir) ? "D:\\deepseek harness" : cfg.serverWorkDir)
+                : serverWorkDir;
+            this.serverLog = this.serverWorkDir + "\\dsh-web.log";
 
             Text = "DeepSeek Harness";
             StartPosition = FormStartPosition.CenterScreen;
@@ -247,6 +250,7 @@ namespace DshDesktop
             else if (key == "desiredSkin") cfg.desiredSkin = value;
             else if (key == "activeSkin") cfg.activeSkin = value;
             else if (key == "trayHint") cfg.trayHint = (value == "true");
+            else if (key == "serverWorkDir") cfg.serverWorkDir = value;
             ConfigStore.Save(cfg);
             if (key == "autoStart") SyncAutoStart(cfg.autoStart);
         }
@@ -429,6 +433,7 @@ namespace DshDesktop
                         if (map.TryGetValue("desiredSkin", out v)) c.desiredSkin = Convert.ToString(v);
                         if (map.TryGetValue("activeSkin", out v)) c.activeSkin = Convert.ToString(v);
                         if (map.TryGetValue("trayHint", out v)) c.trayHint = Convert.ToBoolean(v);
+                        if (map.TryGetValue("serverWorkDir", out v)) c.serverWorkDir = Convert.ToString(v);
                         if (map.TryGetValue("apiPort", out v)) { int p; if (int.TryParse(Convert.ToString(v), out p)) c.apiPort = p; }
                     }
                     return c;
