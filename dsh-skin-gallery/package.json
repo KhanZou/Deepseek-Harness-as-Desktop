@@ -1,0 +1,23 @@
+{
+  "name": "@dsh-external/dsh-client-ui-skin-gallery",
+  "description": "Standalone card-based skin center for the DSH Web UI: one card per skin (name top-left, large preview, highlighted selection, scrollable grid) in its own Settings tab, separate from the Desktop options.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "MIT"
+}

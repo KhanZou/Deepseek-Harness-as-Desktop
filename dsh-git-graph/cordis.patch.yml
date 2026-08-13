@@ -1,0 +1,4 @@
+# dsh-git-graph bundle patch: inserts the git-graph host row.
+- insert:
+    - id: git-graph
+      name: '@dsh-external/dsh-client-ui-git-graph'

@@ -1,0 +1,23 @@
+{
+  "name": "@dsh-external/dsh-client-ui-live-stats",
+  "description": "Real-time token statistics for the DSH Web UI: a compact line under each completed turn showing TPS, LLM wall time, input/output tokens and cache-hit tokens (when the provider reports them).",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "MIT"
+}

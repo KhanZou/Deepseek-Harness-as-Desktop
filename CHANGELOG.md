@@ -2,6 +2,46 @@
 
 All notable changes to **DeepSeek Harness as Desktop**.
 
+## [0.5.0] - 2026-08-14
+
+### Added
+- **`dsh-skin-gallery`** — standalone, card-based **Skin Center** in its own
+  Settings tab: one card per skin (name top-left, large preview in the middle,
+  highlighted selection, scrollable grid), includes the DSH built-in default;
+  switching persists (`activeSkin`) and auto-refreshes. The skin center moved
+  out of the Desktop settings tab.
+- **`dsh-panels-framework`** — generic right/bottom panel framework:
+  `window.__DSH_PANELS__` with `registerPanel`/`toggle`/`setTab`/`setSize`/
+  `getState`/`subscribe`, one-click collapse/expand rails, drag-to-resize, and
+  persisted open state + sizes (settings-framework backend).
+- **`dsh-right-panel`** — Files tab (file tree + text/image preview), Changes
+  tab (git status with stage/unstage/discard), Terminal tab (mini cmd shell
+  with `cd`) and header toggle buttons (◧ ◨ ▤).
+- **`dsh-git-graph`** — Git Graph conversation view tab: branch selector,
+  checkout, commit-history swimlane graph.
+- **`dsh-live-stats`** — per-turn token stats line (TPS, LLM wall time,
+  input/output tokens, cache-hit tokens) via the `conversation.chat.turnTail`
+  chain.
+- exe local API endpoints: `/api/fs/list`, `/api/fs/read` (text + image
+  preview), `/api/git/branches|log|status|checkout|stage|unstage|discard`,
+  `/api/shell/cwd`, `/api/shell/exec` (mini terminal backend).
+- `EffectiveWorkDir` resolution: API defaults now fall back to the resolved
+  workdir (config `serverWorkDir`, else `--workdir`, else the compiled
+  default) instead of an empty string.
+
+### Fixed
+- Panels framework: consumer tab registration no longer clobbers persisted
+  open state before the settings cache is ready (await `sf.ready` + `loaded`
+  guard).
+- Desktop settings tab no longer hosts the skin center (moved to the
+  standalone skin gallery).
+
+### Changed
+- Skin center: card grid with scrollbar, name top-left, large preview,
+  highlighted selection.
+- Right panel + bottom terminal collapse/expand via one-click buttons and
+  slim rails on the edges.
+
 ## [0.4.2] - 2026-08-14
 
 ### Added
@@ -58,20 +98,3 @@ All notable changes to **DeepSeek Harness as Desktop**.
 - Desktop app is now the entry point: it launches the DSH backend
   automatically when needed (`DSH_DESKTOP_AUTO=0` prevents duplicate windows).
 - System-tray residency: minimize/close hides to tray; tray menu Open/Exit;
-  Exit stops the backend only when this exe started it.
-- Launch at logon (HKCU Run) and local config API
-  (`127.0.0.1:3980`: `/api/config`, `/api/skins`, `/api/notify`) with
-  `config.json` persistence.
-
-## [0.2.0] - 2026-08-14
-
-### Changed
-- Replaced the Edge/Chrome `--app` window with a **native WebView2 shell**
-  (C# WinForms + WebView2 SDK, .NET Framework 4.8, x64).
-- Added the DeepSeek whale multi-size icon (`whale.ico`, brand color #4D6BFE).
-
-## [0.1.0] - 2026-08-14
-
-### Added
-- Initial host plugin that opens a desktop window (Edge app-mode) when the
-  DSH backend is reachable.

@@ -1,0 +1,23 @@
+{
+  "name": "@dsh-external/dsh-panels-framework",
+  "description": "Generic right/bottom panel framework for DSH client plugins: register panel tabs (right column + bottom bar) through window.__DSH_PANELS__, with one-click collapse/expand, drag-to-resize and persisted state. The visual counterpart of dsh-settings-framework.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,4 @@
+# dsh-live-stats bundle patch: inserts the live-stats host row.
+- insert:
+    - id: live-stats
+      name: '@dsh-external/dsh-client-ui-live-stats'

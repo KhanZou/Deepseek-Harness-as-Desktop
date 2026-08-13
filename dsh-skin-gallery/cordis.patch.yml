@@ -1,0 +1,4 @@
+# dsh-skin-gallery bundle patch: inserts the skin-gallery host row.
+- insert:
+    - id: skin-gallery
+      name: '@dsh-external/dsh-client-ui-skin-gallery'

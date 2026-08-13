@@ -1,8 +1,8 @@
-// dsh-desktop-settings: migrated to the dsh-settings-framework. Registers the
-// localized "Desktop" Settings tab and its items through the framework
-// (window.__DSH_SETTINGS__), including a custom skin center and a test-notify
-// action. Skin selection persists via the framework backend (activeSkin) and
-// is enforced on every boot.
+// dsh-desktop-settings: Desktop options for the DSH Web UI, registered through
+// the dsh-settings-framework (window.__DSH_SETTINGS__). Covers close-button
+// behavior, auto-start on boot, session-completion notifications, and a test
+// notification action. The skin center moved out to the standalone
+// dsh-skin-gallery plugin (own Settings tab).
 
 window.__ModuleLoader__.load({
 	id: "@dsh-external/dsh-client-ui-settings-desktop",
@@ -12,8 +12,6 @@ window.__ModuleLoader__.load({
 
 		var React = require("react");
 		var h = React.createElement;
-		var useState = React.useState;
-		var useEffect = React.useEffect;
 
 		var API = "http://127.0.0.1:3980";
 		var NS = "desktopSettings";
@@ -32,12 +30,8 @@ window.__ModuleLoader__.load({
 				trayHintLabel: "缩到托盘时显示提示",
 				trayHintHint: "关闭后最小化/关闭窗口不再反复弹出托盘提示。",
 				testNotify: "发送测试通知",
-				skinTitle: "皮肤中心",
-				skinIntro: "几选一：选择 DSH 默认外观或已安装皮肤，切换后界面自动刷新。",
-				skinDefault: "DSH 默认（本体内置）",
-				skinSwitch: "正在切换皮肤，界面将自动刷新…",
-				skinCurrent: "当前",
 				notifSent: "测试通知已发送（查看 Windows 通知中心）",
+				skinGalleryHint: "皮肤请到「皮肤中心」标签页管理（dsh-skin-gallery 插件）。",
 			},
 			en: {
 				nav: "Desktop",
@@ -52,17 +46,12 @@ window.__ModuleLoader__.load({
 				trayHintLabel: "Tray balloon on minimize/close",
 				trayHintHint: "When off, minimizing/closing no longer shows a repeated tray balloon.",
 				testNotify: "Send test notification",
-				skinTitle: "Skin Center",
-				skinIntro: "Pick one: choose the DSH default look or an installed skin; the UI refreshes automatically after switching.",
-				skinDefault: "DSH Default (built-in)",
-				skinSwitch: "Switching skin, the UI will refresh automatically…",
-				skinCurrent: "Current",
 				notifSent: "Test notification sent (see Windows Action Center)",
+				skinGalleryHint: "Manage skins in the Skin Center tab (dsh-skin-gallery plugin).",
 			},
 		};
 
 		var t = null;
-		var ctxRef = null;
 
 		function fetchJson(url, options) {
 			return fetch(url, options).then(function (r) { return r.json(); });
@@ -75,36 +64,6 @@ window.__ModuleLoader__.load({
 			setTimeout(function () { whenReady(cb, tries + 1); }, 200);
 		}
 
-		// Keep only the persisted active skin mounted after boot.
-		function enforceActiveSkin() {
-			setTimeout(function () {
-				fetchJson(API + "/api/config").then(function (cfg) {
-					var active = (cfg && cfg.activeSkin) || "";
-					fetchJson(API + "/api/skins").then(function (skins) {
-						for (var i = 0; i < skins.length; i++) {
-							var s = skins[i];
-							if (s.builtin || !s.package) continue;
-							var keep = active !== "" && active === s.id;
-							if (!keep) disposeEntry(s.package);
-						}
-					}).catch(function () { });
-				}).catch(function () { });
-			}, 800);
-		}
-
-		function disposeEntry(pkg) {
-			try {
-				var entries = ctxRef.loader.entries();
-				for (var i = 0; i < entries.length; i++) {
-					if (entries[i].options.name === pkg && entries[i].fiber) {
-						entries[i].fiber.dispose();
-						return true;
-					}
-				}
-			} catch (e) { }
-			return false;
-		}
-
 		function sendTestNotify() {
 			fetchJson(API + "/api/notify", {
 				method: "POST",
@@ -113,71 +72,7 @@ window.__ModuleLoader__.load({
 			}).catch(function () { });
 		}
 
-		// ---- custom skin center (one-of-N) --------------------------------
-
-		function SkinCenterView(props) {
-			var sf = props.sf;
-			var revState = useState(0);
-			var rev = revState[0];
-			var setRev = revState[1];
-			var cfgState = useState(null);
-			var cfg = cfgState[0];
-			var setCfg = cfgState[1];
-			var skinsState = useState([]);
-			var skins = skinsState[0];
-			var setSkins = skinsState[1];
-			var noticeState = useState("");
-			var notice = noticeState[0];
-			var setNotice = noticeState[1];
-
-			useEffect(function () {
-				var off = null;
-				try { off = sf.subscribe("activeSkin", function () { setRev(function (v) { return v + 1; }); }); } catch (e) { }
-				fetchJson(API + "/api/config").then(setCfg).catch(function () { });
-				fetchJson(API + "/api/skins").then(setSkins).catch(function () { setSkins([]); });
-				return function () { if (off) { try { off(); } catch (e) { } } };
-			}, []);
-
-			var active = (cfg && cfg.activeSkin) || "";
-			var items = [{ id: "default", builtin: true, name: t("skinDefault"), preview: null, package: "" }]
-				.concat(skins.filter(function (s) { return !s.builtin; }));
-
-			function selectSkin(item) {
-				var id = item.builtin ? "" : item.id;
-				sf.set("activeSkin", id).then(function () {
-					setNotice(t("skinSwitch"));
-					setTimeout(function () { try { window.location.reload(); } catch (e) { } }, 900);
-				}).catch(function () { });
-			}
-
-			return h("div", {},
-				h("h3", { style: { margin: "18px 0 6px" } }, t("skinTitle")),
-				h("p", { style: { margin: "0 0 10px", opacity: ".7", fontSize: "13px" } }, t("skinIntro")),
-				h("div", { style: { display: "flex", flexDirection: "column" } },
-					items.map(function (item) {
-						var selected = item.builtin ? (active === "" || active === "default") : (active === item.id);
-						return h("label", {
-							key: item.id + "|" + (item.package || ""),
-							style: {
-								display: "flex", alignItems: "center", gap: "12px",
-								padding: "8px 0", borderBottom: "1px solid rgba(128,128,128,.25)", cursor: "pointer",
-							},
-						},
-							h("input", { type: "radio", name: "dsh-skin", checked: selected, onChange: function () { selectSkin(item); }, style: { flex: "none" } }),
-							item.preview ? h("img", { src: item.preview, style: { width: "48px", height: "48px", borderRadius: "8px", objectFit: "cover", flex: "none" } }) : null,
-							h("div", { style: { flex: "1", minWidth: "0" } },
-								h("div", {},
-									item.builtin ? item.name : (item.name || item.nameEn || item.id),
-									selected ? h("span", { style: { marginLeft: "8px", fontSize: "12px", opacity: ".75" } }, "✓ " + t("skinCurrent")) : null),
-								h("div", { style: { fontSize: "12px", opacity: ".6", wordBreak: "break-all" } }, item.builtin ? t("skinIntro") : item.package)));
-					})),
-				notice ? h("div", { style: { marginTop: "12px", padding: "8px 10px", border: "1px solid rgba(128,128,128,.35)", borderRadius: "6px", fontSize: "13px" } }, notice) : null);
-		}
-
-		// ---- plugin apply -------------------------------------------------
-
 		function apply(ctx) {
-			ctxRef = ctx;
 			ctx.effect(function () {
 				return ctx.locale.register(NS, dict);
 			}, "desktop-settings: dictionaries");
@@ -195,10 +90,11 @@ window.__ModuleLoader__.load({
 				sf.registerItem({ tabId: "desktop", key: "notifyOnComplete", type: "toggle", label: t("notifyLabel"), hint: t("notifyHint"), defaultValue: true });
 				sf.registerItem({ tabId: "desktop", key: "trayHint", type: "toggle", label: t("trayHintLabel"), hint: t("trayHintHint"), defaultValue: false });
 				sf.registerItem({ tabId: "desktop", key: "testNotify", type: "action", label: t("testNotify"), action: sendTestNotify });
-				sf.registerItem({ tabId: "desktop", key: "skinCenter", type: "custom", render: function () { return h(SkinCenterView, { sf: sf }); } });
+				sf.registerItem({ tabId: "desktop", key: "skinGalleryHint", type: "custom",
+					render: function () {
+						return h("div", { style: { fontSize: "12px", opacity: ".75", padding: "4px 0" } }, t("skinGalleryHint"));
+					} });
 			});
-
-			enforceActiveSkin();
 		}
 
 		exports.apply = apply;

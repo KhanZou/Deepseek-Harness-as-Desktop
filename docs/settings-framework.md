@@ -5,6 +5,9 @@ DSH client plugin add **Settings tabs and items declaratively**, persist them,
 and **synchronize changes across plugins** — without hand-writing React slot
 registrations or scope controllers.
 
+> Its visual sibling — a generic right/bottom **panel framework** — lives in
+> [dsh-panels-framework](../dsh-panels-framework) (see [docs/panels-framework.md](panels-framework.md)).
+
 ## Why it exists / what DSH already provides
 
 DSH already ships a platform-level settings system that the framework builds on:

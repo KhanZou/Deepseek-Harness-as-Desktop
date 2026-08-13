@@ -250,6 +250,15 @@ namespace DshDesktop
 
         public Config GetConfig() { return cfg; }
 
+
+
+        /// Effective server working directory: config override, else the
+        /// resolved (--workdir / default) value stored at startup.
+        public string EffectiveWorkDir()
+        {
+            return string.IsNullOrEmpty(cfg.serverWorkDir) ? this.serverWorkDir : cfg.serverWorkDir;
+        }
+
         /// Merged view for the generic /api/settings endpoint: typed desktop
         /// options plus the plugin key-value map.
         public Dictionary<string, object> GetSettingsView()
@@ -261,7 +270,7 @@ namespace DshDesktop
             view["trayHint"] = cfg.trayHint;
             view["desiredSkin"] = cfg.desiredSkin;
             view["activeSkin"] = cfg.activeSkin;
-            view["serverWorkDir"] = cfg.serverWorkDir;
+            view["serverWorkDir"] = EffectiveWorkDir();
             view["apiPort"] = cfg.apiPort;
             foreach (KeyValuePair<string, string> kv in cfg.settings) view[kv.Key] = kv.Value;
             return view;
@@ -503,11 +512,13 @@ namespace DshDesktop
         private Thread thread;
         private volatile bool running = true;
         private JavaScriptSerializer ser = new JavaScriptSerializer();
+        private string shellCwd = "";
 
         public HttpServer(int port, MainForm form)
         {
             this.port = port;
             this.form = form;
+            try { this.shellCwd = form.EffectiveWorkDir(); } catch { }
         }
 
         public void Start()
@@ -591,8 +602,24 @@ namespace DshDesktop
                 string firstLine = head.ToString().Split('\n')[0].Trim();
                 string[] parts = firstLine.Split(' ');
                 string method = parts.Length > 0 ? parts[0] : "GET";
-                string path = parts.Length > 1 ? parts[1] : "/";
-                if (path.IndexOf('?') >= 0) path = path.Substring(0, path.IndexOf('?'));
+                string rawTarget = parts.Length > 1 ? parts[1] : "/";
+                string path = rawTarget;
+                Dictionary<string, string> query = new Dictionary<string, string>();
+                int qi = rawTarget.IndexOf('?');
+                if (qi >= 0)
+                {
+                    path = rawTarget.Substring(0, qi);
+                    string qs = rawTarget.Substring(qi + 1);
+                    foreach (string pair in qs.Split('&'))
+                    {
+                        if (string.IsNullOrEmpty(pair)) continue;
+                        int eq = pair.IndexOf('=');
+                        string k = eq > 0 ? pair.Substring(0, eq) : pair;
+                        string v = eq > 0 ? pair.Substring(eq + 1) : "";
+                        try { k = Uri.UnescapeDataString(k); v = Uri.UnescapeDataString(v); } catch { }
+                        query[k] = v;
+                    }
+                }
 
                 string response = null;
                 string contentType = "application/json; charset=utf-8";
@@ -697,6 +724,57 @@ namespace DshDesktop
                         response = "{\"error\":\"empty body\"}";
                     }
                 }
+                else if (method == "GET" && path == "/api/fs/list")
+                {
+                    string dir = Q(query, "dir", form.EffectiveWorkDir());
+                    response = ListFs(dir);
+                }
+                else if (method == "GET" && path == "/api/fs/read")
+                {
+                    response = ReadTextFile(Q(query, "path", ""));
+                }
+                else if (method == "GET" && path == "/api/git/branches")
+                {
+                    response = GitBranches(Q(query, "dir", form.EffectiveWorkDir()));
+                }
+                else if (method == "GET" && path == "/api/git/log")
+                {
+                    int limit = 50;
+                    string ls = Q(query, "limit", "");
+                    if (!string.IsNullOrEmpty(ls)) int.TryParse(ls, out limit);
+                    response = GitLog(Q(query, "dir", form.EffectiveWorkDir()), Q(query, "branch", ""), limit);
+                }
+                else if (method == "GET" && path == "/api/git/status")
+                {
+                    response = GitStatus(Q(query, "dir", form.EffectiveWorkDir()));
+                }
+                else if (method == "POST" && path == "/api/git/checkout")
+                {
+                    response = GitPost("checkout", body);
+                }
+                else if (method == "POST" && path == "/api/git/stage")
+                {
+                    response = GitPost("stage", body);
+                }
+                else if (method == "POST" && path == "/api/git/unstage")
+                {
+                    response = GitPost("unstage", body);
+                }
+                else if (method == "POST" && path == "/api/git/discard")
+                {
+                    response = GitPost("discard", body);
+                }
+                else if (method == "GET" && path == "/api/shell/cwd")
+                {
+                    Dictionary<string, object> w = new Dictionary<string, object>();
+                    w["ok"] = true;
+                    w["cwd"] = shellCwd;
+                    response = ser.Serialize(w);
+                }
+                else if (method == "POST" && path == "/api/shell/exec")
+                {
+                    response = ShellExec(body);
+                }
                 else
                 {
                     status = 404;
@@ -741,6 +819,395 @@ namespace DshDesktop
                 }
             }
             return -1;
+        }
+
+        // ---- shared helpers ------------------------------------------------
+
+        private static string Q(Dictionary<string, string> query, string key, string def)
+        {
+            string v;
+            if (query.TryGetValue(key, out v) && !string.IsNullOrEmpty(v)) return v;
+            return def;
+        }
+
+        private string gitExePath = null;
+        private string GetGit()
+        {
+            if (gitExePath != null) return gitExePath;
+            string[] candidates = new string[]
+            {
+                @"C:\Program Files\Git\cmd\git.exe",
+                @"C:\Program Files (x86)\Git\cmd\git.exe",
+                @"C:\Program Files\Git\bin\git.exe",
+                "git.exe",
+            };
+            foreach (string c in candidates)
+            {
+                if (c != "git.exe" && File.Exists(c)) { gitExePath = c; return c; }
+            }
+            gitExePath = "git.exe";
+            return gitExePath;
+        }
+
+        private static string QuoteArg(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "\"\"";
+            return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        }
+
+        private class CmdResult
+        {
+            public int Exit = -1;
+            public string Out = "";
+            public string Err = "";
+        }
+
+        private CmdResult RunCmd(string fileName, string args, string dir, Encoding enc)
+        {
+            CmdResult r = new CmdResult();
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = fileName;
+                psi.Arguments = args;
+                psi.WorkingDirectory = dir;
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                psi.StandardOutputEncoding = enc;
+                psi.StandardErrorEncoding = enc;
+                psi.EnvironmentVariables["GIT_TERMINAL_PROMPT"] = "0";
+                Process p = Process.Start(psi);
+                r.Out = p.StandardOutput.ReadToEnd();
+                r.Err = p.StandardError.ReadToEnd();
+                if (p.WaitForExit(30000)) r.Exit = p.ExitCode;
+            }
+            catch (Exception ex)
+            {
+                r.Err = ex.Message;
+            }
+            return r;
+        }
+
+        private static string ImageMime(string ext)
+        {
+            if (ext == ".png") return "image/png";
+            if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
+            if (ext == ".gif") return "image/gif";
+            if (ext == ".webp") return "image/webp";
+            if (ext == ".svg") return "image/svg+xml";
+            if (ext == ".ico") return "image/x-icon";
+            return "image/bmp";
+        }
+
+        // ---- filesystem API ------------------------------------------------
+
+        private string ListFs(string dir)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            try
+            {
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                {
+                    wrap["ok"] = false;
+                    wrap["error"] = "directory not found";
+                    wrap["dir"] = dir;
+                    return ser.Serialize(wrap);
+                }
+                List<Dictionary<string, object>> items = new List<Dictionary<string, object>>();
+                string[] dirs = Directory.GetDirectories(dir);
+                string[] files = Directory.GetFiles(dir);
+                Array.Sort(dirs, StringComparer.OrdinalIgnoreCase);
+                Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+                foreach (string d in dirs)
+                {
+                    DirectoryInfo di = new DirectoryInfo(d);
+                    if ((di.Attributes & FileAttributes.Hidden) != 0) continue;
+                    Dictionary<string, object> e = new Dictionary<string, object>();
+                    e["name"] = di.Name;
+                    e["path"] = d;
+                    e["type"] = "dir";
+                    e["size"] = 0;
+                    items.Add(e);
+                    if (items.Count >= 800) break;
+                }
+                foreach (string f in files)
+                {
+                    FileInfo fi = new FileInfo(f);
+                    if ((fi.Attributes & FileAttributes.Hidden) != 0) continue;
+                    Dictionary<string, object> e = new Dictionary<string, object>();
+                    e["name"] = fi.Name;
+                    e["path"] = f;
+                    e["type"] = "file";
+                    e["size"] = fi.Length;
+                    items.Add(e);
+                    if (items.Count >= 800) break;
+                }
+                wrap["ok"] = true;
+                wrap["dir"] = dir;
+                wrap["items"] = items;
+            }
+            catch (Exception ex)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = ex.Message;
+            }
+            return ser.Serialize(wrap);
+        }
+
+        private string ReadTextFile(string filePath)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            try
+            {
+                if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+                {
+                    wrap["ok"] = false;
+                    wrap["error"] = "file not found";
+                    wrap["path"] = filePath;
+                    return ser.Serialize(wrap);
+                }
+                FileInfo fi = new FileInfo(filePath);
+                string ext = Path.GetExtension(filePath).ToLowerInvariant();
+                bool isImage = ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" ||
+                    ext == ".webp" || ext == ".svg" || ext == ".ico" || ext == ".bmp";
+                long cap = isImage ? 4L * 1024 * 1024 : 512 * 1024;
+                if (fi.Length > cap)
+                {
+                    wrap["ok"] = false;
+                    wrap["error"] = "file too large";
+                    wrap["size"] = fi.Length;
+                    return ser.Serialize(wrap);
+                }
+                byte[] bytes = File.ReadAllBytes(filePath);
+                wrap["ok"] = true;
+                wrap["path"] = filePath;
+                wrap["size"] = bytes.Length;
+                if (isImage)
+                {
+                    wrap["kind"] = "image";
+                    wrap["content"] = "data:" + ImageMime(ext) + ";base64," + Convert.ToBase64String(bytes);
+                }
+                else
+                {
+                    wrap["kind"] = "text";
+                    wrap["content"] = Encoding.UTF8.GetString(bytes);
+                }
+            }
+            catch (Exception ex)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = ex.Message;
+            }
+            return ser.Serialize(wrap);
+        }
+
+        // ---- git API -------------------------------------------------------
+
+        private string GitBranches(string dir)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            CmdResult r = RunCmd(GetGit(), "branch --format=%(refname:short)", dir, Encoding.UTF8);
+            if (r.Exit != 0)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = (r.Err + r.Out).Trim();
+                return ser.Serialize(wrap);
+            }
+            CmdResult rc = RunCmd(GetGit(), "rev-parse --abbrev-ref HEAD", dir, Encoding.UTF8);
+            string current = rc.Exit == 0 ? rc.Out.Trim() : "";
+            List<string> branches = new List<string>();
+            foreach (string line in r.Out.Split('\n'))
+            {
+                string b = line.Trim();
+                if (b.Length > 0 && !branches.Contains(b)) branches.Add(b);
+            }
+            wrap["ok"] = true;
+            wrap["dir"] = dir;
+            wrap["current"] = current;
+            wrap["branches"] = branches;
+            return ser.Serialize(wrap);
+        }
+
+        private string GitLog(string dir, string branch, int limit)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            if (limit <= 0) limit = 50;
+            if (limit > 500) limit = 500;
+            string b = string.IsNullOrEmpty(branch) ? "HEAD" : branch;
+            string args = "log " + QuoteArg(b) + " --date-order --pretty=format:%H%x1f%h%x1f%P%x1f%an%x1f%aI%x1f%s -n " + limit;
+            CmdResult r = RunCmd(GetGit(), args, dir, Encoding.UTF8);
+            if (r.Exit != 0)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = (r.Err + r.Out).Trim();
+                return ser.Serialize(wrap);
+            }
+            List<Dictionary<string, object>> commits = new List<Dictionary<string, object>>();
+            foreach (string line in r.Out.Split('\n'))
+            {
+                string t = line.TrimEnd('\r');
+                if (t.Length == 0) continue;
+                string[] f = t.Split('\x1f');
+                if (f.Length < 5) continue;
+                Dictionary<string, object> c = new Dictionary<string, object>();
+                c["hash"] = f[0].Trim();
+                c["short"] = f[1].Trim();
+                List<string> parents = new List<string>();
+                foreach (string p in f[2].Trim().Split(' ')) if (p.Length > 0) parents.Add(p);
+                c["parents"] = parents;
+                c["author"] = f[3];
+                c["date"] = f[4];
+                c["subject"] = f.Length > 5 ? f[5] : "";
+                commits.Add(c);
+            }
+            wrap["ok"] = true;
+            wrap["dir"] = dir;
+            wrap["branch"] = branch;
+            wrap["commits"] = commits;
+            return ser.Serialize(wrap);
+        }
+
+        private string GitStatus(string dir)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            CmdResult r = RunCmd(GetGit(), "-c core.quotepath=false status --porcelain=v1 --branch", dir, Encoding.UTF8);
+            if (r.Exit != 0)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = (r.Err + r.Out).Trim();
+                return ser.Serialize(wrap);
+            }
+            string branch = "";
+            List<Dictionary<string, object>> changes = new List<Dictionary<string, object>>();
+            foreach (string line in r.Out.Split('\n'))
+            {
+                string t = line.TrimEnd('\r');
+                if (t.Length == 0) continue;
+                if (t.StartsWith("## "))
+                {
+                    branch = t.Substring(3).Trim();
+                    continue;
+                }
+                if (t.Length < 4) continue;
+                string x = t.Substring(0, 1);
+                string y = t.Substring(1, 1);
+                string p = t.Substring(3);
+                int arrow = p.IndexOf(" -> ");
+                string path = arrow >= 0 ? p.Substring(0, arrow) : p;
+                string to = arrow >= 0 ? p.Substring(arrow + 4) : "";
+                Dictionary<string, object> ch = new Dictionary<string, object>();
+                ch["x"] = x;
+                ch["y"] = y;
+                ch["path"] = path;
+                ch["to"] = to;
+                changes.Add(ch);
+            }
+            wrap["ok"] = true;
+            wrap["dir"] = dir;
+            wrap["branch"] = branch;
+            wrap["changes"] = changes;
+            return ser.Serialize(wrap);
+        }
+
+        private string GitPost(string action, byte[] body)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            if (body == null)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = "empty body";
+                return ser.Serialize(wrap);
+            }
+            string bodyText = Encoding.UTF8.GetString(body);
+            Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
+            string dir = "";
+            string arg = "";
+            if (map != null)
+            {
+                object v;
+                if (map.TryGetValue("dir", out v)) dir = Convert.ToString(v);
+                if (map.TryGetValue("branch", out v)) arg = Convert.ToString(v);
+                if (map.TryGetValue("path", out v)) arg = Convert.ToString(v);
+            }
+            if (string.IsNullOrEmpty(dir)) dir = form.EffectiveWorkDir();
+            string git = GetGit();
+            string args = "";
+            if (action == "checkout") args = "checkout " + QuoteArg(arg);
+            else if (action == "stage") args = arg == "." || arg == "" ? "add -A" : "add -- " + QuoteArg(arg);
+            else if (action == "unstage") args = arg == "." || arg == "" ? "reset" : "reset -- " + QuoteArg(arg);
+            else if (action == "discard") args = arg == "." || arg == "" ? "checkout -- ." : "checkout -- " + QuoteArg(arg);
+            else
+            {
+                wrap["ok"] = false;
+                wrap["error"] = "unknown action";
+                return ser.Serialize(wrap);
+            }
+            CmdResult r = RunCmd(git, args, dir, Encoding.UTF8);
+            wrap["ok"] = r.Exit == 0;
+            wrap["output"] = (r.Out + r.Err).Trim();
+            if (r.Exit != 0) wrap["error"] = (r.Err + r.Out).Trim();
+            return ser.Serialize(wrap);
+        }
+
+        // ---- shell API (mini terminal) ------------------------------------
+
+        private string ShellExec(byte[] body)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            if (body == null)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = "empty body";
+                return ser.Serialize(wrap);
+            }
+            string bodyText = Encoding.UTF8.GetString(body);
+            Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
+            string dir = "";
+            string command = "";
+            if (map != null)
+            {
+                object v;
+                if (map.TryGetValue("dir", out v)) dir = Convert.ToString(v);
+                if (map.TryGetValue("command", out v)) command = Convert.ToString(v);
+            }
+            string useDir = string.IsNullOrEmpty(dir) ? shellCwd : dir;
+            if (string.IsNullOrEmpty(useDir)) useDir = form.EffectiveWorkDir();
+            string trimmed = (command ?? "").Trim();
+            if (trimmed.StartsWith("cd "))
+            {
+                string target = trimmed.Substring(3).Trim().Trim('"').Trim();
+                if (target.Length == 0)
+                {
+                    wrap["ok"] = true;
+                    wrap["cwd"] = useDir;
+                    wrap["output"] = useDir;
+                    return ser.Serialize(wrap);
+                }
+                string newDir = Path.IsPathRooted(target) ? target : Path.Combine(useDir, target);
+                if (Directory.Exists(newDir))
+                {
+                    shellCwd = newDir;
+                    wrap["ok"] = true;
+                    wrap["cwd"] = newDir;
+                    wrap["output"] = "";
+                }
+                else
+                {
+                    wrap["ok"] = false;
+                    wrap["cwd"] = useDir;
+                    wrap["output"] = "cd: directory not found: " + target;
+                }
+                return ser.Serialize(wrap);
+            }
+            Encoding oem = Encoding.GetEncoding(System.Globalization.CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
+            CmdResult r = RunCmd("cmd.exe", "/c " + command, useDir, oem);
+            wrap["ok"] = r.Exit == 0;
+            wrap["cwd"] = useDir;
+            wrap["exit"] = r.Exit;
+            wrap["output"] = r.Out + (r.Err.Length > 0 ? (r.Out.Length > 0 ? "\r\n" : "") + r.Err : "");
+            return ser.Serialize(wrap);
         }
     }
 }
