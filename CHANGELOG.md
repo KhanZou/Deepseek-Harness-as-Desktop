@@ -10,6 +10,11 @@ All notable changes to **DeepSeek Harness as Desktop**.
   `custom` item types.
 - `dsh-demo-settings`: example framework consumer.
 
+### Fixed
+- Framework no longer re-emits **all** keys on refresh/set — it emits only
+  keys whose value actually changed (prevents subscriber loops, e.g. the
+  demo toast spam).
+
 ### Changed
 - The Desktop settings tab now runs **on the framework** (dogfooding): its
   options, test-notify action, and skin center are declared through the

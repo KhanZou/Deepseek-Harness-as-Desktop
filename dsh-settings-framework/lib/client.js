@@ -48,6 +48,18 @@ window.__ModuleLoader__.load({
 			return findDefault(key);
 		}
 
+		function applyChanges(next) {
+			var keys = new Set(Object.keys(cache).concat(Object.keys(next || {})));
+			var changed = [];
+			keys.forEach(function (k) {
+				var a = cache[k] === undefined ? "" : String(cache[k]);
+				var b = (next && next[k] !== undefined) ? String(next[k]) : "";
+				if (a !== b) changed.push(k);
+			});
+			cache = next || {};
+			changed.forEach(function (k) { emit(k); });
+		}
+
 		function set(key, value) {
 			var v = value === undefined || value === null ? "" : String(value);
 			cache[key] = v;
@@ -57,8 +69,7 @@ window.__ModuleLoader__.load({
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ key: key, value: v }),
 			}).then(function (m) {
-				cache = m || cache;
-				Object.keys(subs).forEach(function (k) { emit(k); });
+				applyChanges(m);
 			}).catch(function () { });
 		}
 
@@ -80,8 +91,7 @@ window.__ModuleLoader__.load({
 
 		function refresh() {
 			return fetchJson(API + "/api/settings").then(function (m) {
-				cache = m || {};
-				Object.keys(subs).forEach(function (k) { emit(k); });
+				applyChanges(m);
 			}).catch(function () { });
 		}
 
