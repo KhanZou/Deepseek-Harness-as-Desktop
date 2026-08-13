@@ -151,7 +151,9 @@ function scanForSkins() {
     for (const ent of entries) {
       if (ent.name === 'node_modules' || ent.name === '.git' || ent.name === '.pnpm') continue
       const full = path.join(dir, ent.name)
-      if (!ent.isDirectory()) continue
+      let st
+      try { st = fs.statSync(full) } catch { continue }
+      if (!st.isDirectory()) continue
       const sj = path.join(full, 'skin.json')
       if (fs.existsSync(sj)) {
         try {
