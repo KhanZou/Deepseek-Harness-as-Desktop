@@ -1,0 +1,23 @@
+{
+  "name": "@dsh-external/dsh-client-ui-settings-desktop",
+  "description": "Adds a Desktop settings tab to the DSH Web UI: close-button behavior, auto-start on boot, session-completion notifications, and skin quick-switch management. Talks to the local DshDesktop.exe config API.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "MIT"
+}

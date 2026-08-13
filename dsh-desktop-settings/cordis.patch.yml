@@ -1,0 +1,4 @@
+# dsh-desktop-settings bundle patch: inserts the desktop-settings host row.
+- insert:
+    - id: desktop-settings
+      name: '@dsh-external/dsh-client-ui-settings-desktop'

@@ -1,0 +1,15 @@
+# runtime data
+.wv2-profile/
+.runtime-profile/
+config.json
+skins.json
+
+# deps / build
+node_modules/
+sdk/
+*.zip
+*.log
+
+# misc
+.DS_Store
+Thumbs.db

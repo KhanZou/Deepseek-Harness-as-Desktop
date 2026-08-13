@@ -1,0 +1,4 @@
+# dsh-desktop-window bundle patch: inserts the desktop-window host plugin row.
+- insert:
+    - id: desktop-window
+      name: '@dsh-external/dsh-desktop-window'
