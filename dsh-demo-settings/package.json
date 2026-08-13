@@ -1,0 +1,23 @@
+{
+  "name": "@dsh-external/dsh-demo-settings",
+  "description": "Demo consumer of the dsh-settings-framework: adds a Settings tab with declarative items and reacts to setting changes (cross-plugin sync).",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "MIT"
+}

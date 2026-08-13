@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -26,6 +27,7 @@ namespace DshDesktop
         public string desiredSkin = "";
         public string activeSkin = "";
         public string serverWorkDir = "";
+        public Dictionary<string, string> settings = new Dictionary<string, string>();
         public int apiPort = 3980;
     }
 
@@ -251,6 +253,7 @@ namespace DshDesktop
             else if (key == "activeSkin") cfg.activeSkin = value;
             else if (key == "trayHint") cfg.trayHint = (value == "true");
             else if (key == "serverWorkDir") cfg.serverWorkDir = value;
+            else cfg.settings[key] = value;
             ConfigStore.Save(cfg);
             if (key == "autoStart") SyncAutoStart(cfg.autoStart);
         }
@@ -434,6 +437,7 @@ namespace DshDesktop
                         if (map.TryGetValue("activeSkin", out v)) c.activeSkin = Convert.ToString(v);
                         if (map.TryGetValue("trayHint", out v)) c.trayHint = Convert.ToBoolean(v);
                         if (map.TryGetValue("serverWorkDir", out v)) c.serverWorkDir = Convert.ToString(v);
+                        if (map.TryGetValue("settings", out v) && v is Dictionary<string, object>) { c.settings = ((Dictionary<string, object>)v).ToDictionary(kv => kv.Key, kv => Convert.ToString(kv.Value)); }
                         if (map.TryGetValue("apiPort", out v)) { int p; if (int.TryParse(Convert.ToString(v), out p)) c.apiPort = p; }
                     }
                     return c;
@@ -622,6 +626,39 @@ namespace DshDesktop
                         }
                         form.BeginInvoke(new Action<string, string>(form.ShowToast), title, message);
                         response = "{\"ok\":true}";
+                    }
+                    else
+                    {
+                        status = 400;
+                        response = "{\"error\":\"empty body\"}";
+                    }
+                }
+                else if (method == "GET" && path == "/api/settings")
+                {
+                    response = ser.Serialize(form.GetConfig().settings);
+                }
+                else if (method == "POST" && path == "/api/settings")
+                {
+                    if (body != null)
+                    {
+                        string bodyText = Encoding.UTF8.GetString(body);
+                        Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
+                        object key = null, value = null;
+                        if (map != null)
+                        {
+                            map.TryGetValue("key", out key);
+                            map.TryGetValue("value", out value);
+                        }
+                        if (key != null && value != null)
+                        {
+                            form.UpdateConfig(Convert.ToString(key), Convert.ToString(value));
+                            response = ser.Serialize(form.GetConfig().settings);
+                        }
+                        else
+                        {
+                            status = 400;
+                            response = "{\"error\":\"key and value required\"}";
+                        }
                     }
                     else
                     {

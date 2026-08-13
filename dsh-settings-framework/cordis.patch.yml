@@ -1,0 +1,4 @@
+# dsh-settings-framework bundle patch.
+- insert:
+    - id: settings-framework
+      name: '@dsh-external/dsh-settings-framework'
