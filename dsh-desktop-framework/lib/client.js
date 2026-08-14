@@ -628,25 +628,35 @@ function applyPanels(ctx) {
 		function RightPanelShell() {
 			ensureStyle();
 			var st = usePanelState();
-			if (!st.right.tabs.length) return null;
 			var rs = st.right;
-			var active = byId(rs.tabs, rs.tab);
 			if (!rs.open) return null;
+			var header = h("div", { className: "dsh-panel-header" },
+				h(TabBar, { side: "right", st: rs }));
+			if (!rs.tabs.length) {
+				return h("div", { className: "dsh-panel-right", style: { width: rs.width + "px", right: metrics.details + "px" } },
+					h("div", { className: "dsh-panel-resize-left", onMouseDown: startResize("right") }),
+					header,
+					h("div", { className: "dsh-panel-body dsh-panel-empty" }, t("empty")));
+			}
+			var active = byId(rs.tabs, rs.tab);
 			return h("div", { className: "dsh-panel-right", style: { width: rs.width + "px", right: metrics.details + "px" } },
 				h("div", { className: "dsh-panel-resize-left", onMouseDown: startResize("right") }),
-				h("div", { className: "dsh-panel-header" },
-					h(TabBar, { side: "right", st: rs })),
+				header,
 				h("div", { className: "dsh-panel-body" }, active.render({ side: "right", tab: active.id, h: h, React: React })));
 		}
 		function BottomPanelShell() {
 			ensureStyle();
 			var st = usePanelState();
-			if (!st.bottom.tabs.length) return null;
 			var bs = st.bottom;
-			var active = byId(bs.tabs, bs.tab);
 			if (!bs.open) return null;
 			var bl = metrics.sidebar;
 			var br = (state.right.open ? state.right.width : 0) + metrics.details;
+			if (!bs.tabs.length) {
+				return h("div", { className: "dsh-panel-bottom", style: { height: bs.height + "px", left: bl + "px", right: br + "px" } },
+					h("div", { className: "dsh-panel-resize-top", onMouseDown: startResize("bottom") }),
+					h("div", { className: "dsh-panel-body dsh-panel-empty" }, t("empty")));
+			}
+			var active = byId(bs.tabs, bs.tab);
 			return h("div", { className: "dsh-panel-bottom", style: { height: bs.height + "px", left: bl + "px", right: br + "px" } },
 				h("div", { className: "dsh-panel-resize-top", onMouseDown: startResize("bottom") }),
 				h("div", { className: "dsh-panel-body" }, active.render({ side: "bottom", tab: active.id, h: h, React: React })));
@@ -1759,7 +1769,7 @@ function applyDesktopExtras(ctx) {
     }
 
     // ---- link-ification ---------------------------------------------------
-    var LINK_RE = /(https?:\/\/[^\s<>"'()]+|(?:[A-Za-z]:[\\/][^\s<>"']+))/g;
+    var LINK_RE = /(https?:\/\/[^\s<>"'()]+|(?:[A-Za-z]:[\\/](?:[^<>"'\n]+?\.\w{1,10})(?=[，。、；：,;:!?…\s]|$)|[A-Za-z]:[\\/](?:[^<>"'\n]+?[\\/])))/g;
     function isLocalRef(s) {
         return /^[A-Za-z]:[\\/]/.test(s) || /^file:\/\//i.test(s);
     }
@@ -1836,7 +1846,7 @@ function applyDesktopExtras(ctx) {
         while ((m = LINK_RE.exec(text)) !== null) {
             if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
             var token = m[0];
-            token = token.replace(/[\u3002\uff0c\u3001\uff1b\uff1a,;:!?\u2026]+$/, "");
+            token = token.replace(/[，。、；：,;:!?…"'”’)\]]+$/, "");
             if (!token) continue;
             var isUrl = /^https?:/i.test(token);
             var a = document.createElement("a");
