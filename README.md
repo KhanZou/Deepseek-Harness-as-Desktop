@@ -13,7 +13,7 @@
 - 🔔 **Real Windows toasts** — task-completion notifications appear in the Action Center (AUMID-registered unpackaged toast), with tray-balloon fallback.
 - ⚙️ **Desktop settings tab** — a **Desktop** section in *Settings* manages close-button behavior, auto-start, and notifications. Localized (zh/en), follows the DSH language switcher.
 - 🧩 **Unified desktop framework** — one plugin (`dsh-desktop-framework`) merges the former settings/panels frameworks and the right-panel tabs: any plugin can add Settings tabs/items declaratively (`registerTab`/`registerItem`/`get`/`set`/`subscribe`) and register right/bottom panel tabs (`registerPanel`), with persistence and cross-plugin sync (see [docs/settings-framework.md](docs/settings-framework.md) and [docs/panels-framework.md](docs/panels-framework.md)).
-- 🎨 **Standalone skin center** — a separate **Skin Center** Settings tab (its own plugin) shows one card per skin: name top-left, large preview in the middle, highlighted selection, scrollable grid. Includes the DSH built-in default; switching persists and auto-refreshes.
+- 🎨 **Standalone skin center** — a separate **Skin Center** Settings tab (its own plugin, `dsh-skin-gallery`) shows modern preview cards: each card paints a mini app-window mockup with the real theme tokens (plus the skin's `accent` when provided), shows name/author/description, marks the current skin with a ✓ badge, and supports filter chips (All / Built-in / Skins). Click a card to apply; the choice persists (`activeSkin`) and the UI auto-refreshes.
 - 📐 **Right/bottom panels framework** — part of `dsh-desktop-framework`: renders a right column and a bottom bar with tabs, one-click collapse/expand rails, drag-to-resize, and persisted state. Any plugin can register tabs (see [docs/panels-framework.md](docs/panels-framework.md)).
 - 📁 **Files & SCM panel** — a **Files** tab (file tree + text/image preview) and a **Changes** tab (git status with stage/unstage/discard) in the right panel.
 - 💻 **Mini terminal** — a **Terminal** tab in the bottom panel: run commands in the harness directory (`cd` supported), backed by the desktop client.
@@ -127,12 +127,16 @@ The Desktop settings tab writes these through the exe's local HTTP API
 
 ## Skin center & skin compatibility
 
-The **Skin Center** (its own Settings tab, `dsh-skin-gallery`) is a one-of-N
-card picker: the DSH built-in default plus every installed skin plugin. Each
-card shows the skin name in the top-left, a large preview image in the middle,
-a highlighted border for the selected skin, and the grid scrolls. Picking a
-skin persists `activeSkin` and reloads the UI; on every boot only the selected
-skin stays mounted.
+The **Skin Center** (its own Settings tab, `dsh-skin-gallery`, ordered after
+all native settings tabs) is a one-of-N card picker: the DSH built-in default
+plus every installed skin plugin. Each card paints a mini app-window mockup
+with the **actual theme tokens** (no hardcoded colors) — sidebar, chat bubbles,
+input bar and a brand-colored send button — using the skin's `accent` color
+when the manifest provides one, and falls back to the current theme otherwise.
+The current skin is marked with a ✓ badge, cards lift on hover, and the grid
+supports filter chips (All / Built-in / Skins). Picking a skin persists
+`activeSkin` and reloads the UI; on every boot only the selected skin stays
+mounted.
 
 Third-party skins are **not bundled**. To make a skin appear in the picker it
 must provide a `skin.json` next to its package and be registered with

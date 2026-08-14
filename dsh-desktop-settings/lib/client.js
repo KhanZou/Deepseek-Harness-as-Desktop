@@ -79,7 +79,7 @@ window.__ModuleLoader__.load({
 			t = ctx.locale.bind(NS);
 
 			whenReady(function (sf) {
-				sf.registerTab({ id: "desktop", label: function () { return t("nav"); }, order: 90 });
+				sf.registerTab({ id: "desktop", label: function () { return t("nav"); }, order: 1020 });
 
 				sf.registerItem({ tabId: "desktop", key: "closeBehavior", type: "select", label: t("closeLabel"),
 					options: [

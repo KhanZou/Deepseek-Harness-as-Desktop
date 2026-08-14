@@ -152,6 +152,10 @@ function applySettings(ctx) {
 				hint: opt.hint || "",
 				defaultValue: opt.defaultValue,
 				options: opt.options || [],
+				// Custom/action item payloads: registerItem must keep them so
+				// TabShellView can render type:"custom" and type:"action".
+				action: opt.action,
+				render: opt.render,
 			});
 			if (cache[opt.key] === undefined && opt.defaultValue !== undefined) {
 				cache[opt.key] = String(opt.defaultValue);
@@ -1762,7 +1766,7 @@ function applyDesktopExtras(ctx) {
             { value: "desktop", label: t("desktop") },
             { value: "system", label: t("system") },
         ];
-        sf.registerTab({ id: "fileOpen", label: function () { return t("nav"); }, order: 95 });
+        sf.registerTab({ id: "fileOpen", label: function () { return t("nav"); }, order: 1010 });
         kinds.forEach(function (k) {
             sf.registerItem({
                 tabId: "fileOpen",

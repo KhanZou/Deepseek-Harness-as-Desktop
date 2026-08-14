@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.0] - 2026-08-14
+
+### Added
+- **Modern Skin Center** (`dsh-skin-gallery`): the settings tab is now a
+  card gallery where each card paints a mini app-window mockup with the
+  **real theme tokens** (no hardcoded colors) — sidebar, chat bubbles, input
+  bar and a brand-colored send button. A skin's `accent` (when present) drives
+  the mockup's brand elements; `preview.light/dark` images are still shown when
+  provided. Cards show name/author/description, the current skin gets a ✓
+  badge, cards lift on hover, and filter chips (All / Built-in / Skins) let you
+  narrow the grid. One click applies, persists `activeSkin`, and reloads.
+- **Plugin settings tabs are grouped after native tabs**: plugin-owned
+  settings tabs now use high order values (文件打开=1010, 桌面客户端=1020,
+  皮肤中心=1030) so they always appear below the native settings tabs
+  (通用设置 / 模型 / 插件 / Agent 预设).
+- **Skin manifest pass-through**: `dsh-desktop-window` now carries `accent`,
+  `tags` and `bodyAttr` from each `skin.json` into the generated `skins.json`,
+  so the Skin Center can paint accurate previews.
+
+### Fixed
+- **Settings framework**: `registerItem` dropped the `render`/`action` payload,
+  so `type: "custom"` items rendered as a plain text input labeled with the
+  key and `type: "action"` items never worked. Both payloads are now stored and
+  `TabShellView` renders custom/action items correctly (this is what makes the
+  Skin Center cards and the Desktop tab's test-notify action actually render).
+
 ## 0.3.0 - themed non-floating panels, multi-type viewers, conversation links
 
 - **Panels**: right/bottom panels now follow the app theme (light/dark) instead

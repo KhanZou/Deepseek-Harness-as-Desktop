@@ -169,6 +169,12 @@ function scanForSkins() {
               package: pkg,
               author: meta.author || '',
               description: meta.description || '',
+              // Pass-through fields that let the Skin Center render accurate
+              // mini previews (accent color, tags) without reading the skin
+              // bundle itself.
+              accent: meta.accent || '',
+              tags: Array.isArray(meta.tags) ? meta.tags : [],
+              bodyAttr: meta.bodyAttr || '',
             }
             try {
               const light = meta.preview && meta.preview.light

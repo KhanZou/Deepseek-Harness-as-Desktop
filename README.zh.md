@@ -13,7 +13,7 @@
 - 🔔 **真实 Windows Toast**——任务完成通知进入操作中心（AUMID 注册的无包 Toast），失败回退托盘气泡。
 - ⚙️ **DSH Web 设置里的"桌面客户端"tab**——管理关闭按钮行为、开机自启、会话通知；已本地化（zh/en），跟随 DSH 语言切换。
 - 🧩 **统一桌面框架**——单个插件 `dsh-desktop-framework` 合并了原 settings/panels 框架与右侧面板：任意插件可用 `registerTab`/`registerItem`/`get`/`set`/`subscribe` 声明式添加设置 tab/条目，也可用 `registerPanel` 注册右侧/底部面板 tab，带持久化与跨插件同步（见 [docs/settings-framework.md](docs/settings-framework.md) 与 [docs/panels-framework.md](docs/panels-framework.md)）。
-- 🎨 **独立皮肤中心**——独立的 **皮肤中心** 设置 tab（独立插件 `dsh-skin-gallery`）：每种皮肤一张卡片（左上角名称、中间大预览图、选中高亮、可滚动网格），包含 DSH 本体内置默认皮肤；切换后自动刷新并持久化。
+- 🎨 **独立皮肤中心**——独立的 **皮肤中心** 设置 tab（独立插件 `dsh-skin-gallery`）：现代预览卡片式——每张卡片用**真实主题 token**（不硬编码颜色）绘制一个迷你应用窗口缩略图（侧栏、聊天气泡、输入条与品牌色发送按钮），皮肤提供 `accent` 时使用其强调色；卡片显示名称/作者/描述，当前皮肤带 ✓ 角标，支持 全部/内置/皮肤 筛选。点击卡片即应用，持久化 `activeSkin` 并自动刷新。
 - 📐 **右侧/底部面板框架**——属于 `dsh-desktop-framework`：渲染右侧栏与底部栏，带 tab、一键折叠/展开把手、拖拽调宿、状态持久化；任意插件可注册面板 tab（见 [docs/panels-framework.md](docs/panels-framework.md)）。
 - 📁 **文件与变更面板**——右侧面板 **文件** tab（文件树 + 文本/图片预览）与 **变更** tab（git status + stage/unstage/discard）。
 - 💻 **迷你终端**——底部面板 **终端** tab：在 harness 目录执行命令（支持 `cd`），由桌面客户端后端驱动。
@@ -121,10 +121,12 @@ Deepseek-Harness-as-Desktop/
 
 ## 皮肤中心与皮肤兼容
 
-**皮肤中心**（独立设置 tab，`dsh-skin-gallery`）是几选一卡片选择器：DSH
-本体内置默认 + 所有已装皮肤插件。每张卡片左上角为名称、中间为大预览图、
-选中高亮边框，网格可滚动。选中后持久化 `activeSkin` 并自动刷新；每次启动
-只保留选中的皮肤挂载。
+**皮肤中心**（独立设置 tab，`dsh-skin-gallery`，排列在所有原生设置 tab
+之后）是几选一卡片选择器：DSH 本体内置默认 + 所有已装皮肤插件。每张卡片用
+**实际主题 token** 绘制一个迷你应用窗口缩略图（无硬编码颜色）——侧栏、聊天
+气泡、输入条与品牌色发送按钮——当清单提供皮肤 `accent` 时使用其强调色，否则
+回退到当前主题。当前皮肤带 ✓ 角标，卡片悬停浮起，支持 全部/内置/皮肤 筛选。
+选中后持久化 `activeSkin` 并自动刷新；每次启动只保留选中的皮肤挂载。
 
 第三方皮肤**不打进包里**。要让皮肤出现在选择器中，需在包旁提供 `skin.json`
 并用 `dsh plugin --profile web add` 注册。完整约定见
