@@ -1154,7 +1154,7 @@ namespace DshDesktop
                 string ext = Path.GetExtension(filePath).ToLowerInvariant();
                 bool isImage = ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" ||
                     ext == ".webp" || ext == ".svg" || ext == ".ico" || ext == ".bmp";
-                long cap = isImage ? 4L * 1024 * 1024 : 512 * 1024;
+                long cap = isImage ? 20L * 1024 * 1024 : 1024 * 1024;
                 if (fi.Length > cap)
                 {
                     wrap["ok"] = false;

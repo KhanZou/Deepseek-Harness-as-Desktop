@@ -584,7 +584,11 @@ function applyPanels(ctx) {
 			});
 			document.body.appendChild(plusMenuEl);
 			setTimeout(function () {
-				document.addEventListener("mousedown", function h(e) { hidePlusMenu(); document.removeEventListener("mousedown", h); });
+				document.addEventListener("mousedown", function h(e) {
+					if (plusMenuEl && plusMenuEl.contains(e.target)) return;
+					hidePlusMenu();
+					document.removeEventListener("mousedown", h);
+				});
 			}, 0);
 		}
 
@@ -1327,7 +1331,11 @@ function applyDesktopExtras(ctx) {
         });
         document.body.appendChild(menuEl);
         setTimeout(function () {
-            document.addEventListener("mousedown", onDocDown, { once: true });
+            document.addEventListener("mousedown", function h(e) {
+                if (menuEl && menuEl.contains(e.target)) return;
+                hideMenu();
+                document.removeEventListener("mousedown", h);
+            });
         }, 0);
     }
     function onDocDown() { hideMenu(); }
