@@ -11,6 +11,35 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 
+		// Shared inline-SVG icons for the desktop framework UI (modern, theme-aware).
+		var dshReact = require("react");
+		var dshH = dshReact.createElement;
+		var DSH_ICONS = {
+			close: [["path", { d: "M4 4l8 8M12 4l-8 8" }]],
+			"chevron-left": [["path", { d: "M10 3L5 8l5 5" }]],
+			"chevron-right": [["path", { d: "M6 3l5 5-5 5" }]],
+			"chevron-up": [["path", { d: "M3 10l5-5 5 5" }]],
+			"chevron-down": [["path", { d: "M3 6l5 5 5-5" }]],
+			plus: [["path", { d: "M8 3v10M3 8h10" }]],
+			"panel-right": [["rect", { x: 1.5, y: 2.5, width: 13, height: 11, rx: 2 }], ["path", { d: "M10.5 2.5v11" }]],
+			"panel-bottom": [["rect", { x: 1.5, y: 2.5, width: 13, height: 11, rx: 2 }], ["path", { d: "M1.5 10.5h13" }]],
+		};
+		function dshIcon(name, size) {
+			var s = size || 16;
+			var def = DSH_ICONS[name] || DSH_ICONS.plus;
+			var kids = def.map(function (it, idx) {
+				var attrs = {};
+				for (var k in it[1]) attrs[k] = it[1][k];
+				attrs.key = idx;
+				return dshH(it[0], attrs);
+			});
+			return dshH("svg", {
+				viewBox: "0 0 16 16", width: s, height: s, fill: "none",
+				stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round",
+				style: { display: "inline-block", verticalAlign: "middle", flex: "none" },
+			}, kids);
+		}
+
 		// ---- settings framework (window.__DSH_SETTINGS__) ------------------------------------------------
 function applySettings(ctx) {
 
@@ -336,6 +365,7 @@ function applyPanels(ctx) {
 				id: opt.id,
 				label: opt.label || opt.id,
 				order: opt.order || 50,
+				closable: !!opt.closable,
 				render: typeof opt.render === "function" ? opt.render : function () { return null; },
 			});
 			list.sort(function (a, b) { return a.order - b.order; });
@@ -547,12 +577,17 @@ function applyPanels(ctx) {
 			hidePlusMenu();
 			var rect = anchor.getBoundingClientRect();
 			var items = [];
+			function ensureTab(id) {
+				if (window.__DSH_TABS__) window.__DSH_TABS__.ensure(id);
+				else setTab(side, id);
+			}
 			if (side === "right") {
-				items.push({ label: "\u6587\u4ef6\u6d4f\u89c8", action: function () { setTab("right", "files"); } });
+				items.push({ label: "\u6587\u4ef6\u6d4f\u89c8", action: function () { ensureTab("files"); } });
+				items.push({ label: "\u53d8\u66f4", action: function () { ensureTab("changes"); } });
 				items.push({ label: "\u6253\u5f00\u6587\u4ef6\u2026", action: function () { var p = prompt("\u8f93\u5165\u6587\u4ef6\u8def\u5f84"); if (p && window.__DSH_OPEN__) window.__DSH_OPEN__.openResource({ path: p, name: p }); } });
 				items.push({ label: "\u6253\u5f00URL\u2026", action: function () { var u = prompt("\u8f93\u5165URL"); if (u && window.__DSH_OPEN__) window.__DSH_OPEN__.openWeb(u); } });
 			} else {
-				items.push({ label: "\u7ec8\u7aef", action: function () { setTab("bottom", "terminal"); } });
+				items.push({ label: "\u7ec8\u7aef", action: function () { ensureTab("terminal"); } });
 			}
 			plusMenuEl = document.createElement("div");
 			plusMenuEl.className = "dsh-panel-plus-menu";
@@ -578,15 +613,25 @@ function applyPanels(ctx) {
 				st.tabs.map(function (tab) {
 					var label = typeof tab.label === "function" ? tab.label() : tab.label;
 					var closeBtn = tab.closable
-						? h("button", { className: "dsh-panel-tab-close", title: "x", onClick: function (e) { e.stopPropagation(); removeTab(side, tab.id); } }, "x")
+						? h("button", {
+							className: "dsh-panel-tab-close",
+							title: "close",
+							onClick: function (e) { e.stopPropagation(); removeTab(side, tab.id); },
+							style: { display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" },
+						}, dshIcon("close", 12))
 						: null;
-					return h("button", {
+					return h("div", {
 						key: tab.id,
 						className: "dsh-panel-tab" + (st.tab === tab.id ? " active" : ""),
 						onClick: function () { setTab(side, tab.id); },
-					}, label, closeBtn);
+					}, h("span", { className: "dsh-panel-tab-label" }, label), closeBtn);
 				}),
-				h("button", { className: "dsh-panel-tab-plus", title: "+", onClick: function (e) { e.stopPropagation(); showPlusMenu(side, e.currentTarget); } }, "+"));
+				h("button", {
+					className: "dsh-panel-tab-plus",
+					title: "new tab",
+					onClick: function (e) { e.stopPropagation(); showPlusMenu(side, e.currentTarget); },
+					style: { display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" },
+				}, dshIcon("plus", 15)));
 		}
 
 		function usePanelState() {
@@ -607,13 +652,14 @@ function applyPanels(ctx) {
 			if (!rs.open) {
 				var rlabel = typeof active.label === "function" ? active.label() : active.label;
 				return h("div", { className: "dsh-panel-rail-right", title: rlabel, onClick: function () { toggle("right"); } },
-					h("span", {}, "◀ " + rlabel));
+					dshIcon("chevron-left", 14),
+					h("span", { style: { writingMode: "vertical-rl" } }, rlabel));
 			}
 			return h("div", { className: "dsh-panel-right", style: { width: rs.width + "px" } },
 				h("div", { className: "dsh-panel-resize-left", onMouseDown: startResize("right") }),
 				h("div", { className: "dsh-panel-header" },
 					h(TabBar, { side: "right", st: rs }),
-					h("button", { className: "dsh-panel-toggle", title: t("collapse"), onClick: function () { toggle("right"); } }, "»")),
+					h("button", { className: "dsh-panel-toggle", title: t("collapse"), onClick: function () { toggle("right"); }, style: { display: "inline-flex", alignItems: "center", justifyContent: "center" } }, dshIcon("chevron-right", 14))),
 				h("div", { className: "dsh-panel-body" }, active.render({ side: "right", tab: active.id, h: h, React: React })));
 		}
 		function BottomPanelShell() {
@@ -625,13 +671,14 @@ function applyPanels(ctx) {
 			if (!bs.open) {
 				var blabel = typeof active.label === "function" ? active.label() : active.label;
 				return h("div", { className: "dsh-panel-rail-bottom", title: blabel, onClick: function () { toggle("bottom"); } },
-					h("span", {}, "▲ " + blabel));
+					dshIcon("chevron-up", 14),
+					h("span", {}, blabel));
 			}
 			return h("div", { className: "dsh-panel-bottom", style: { height: bs.height + "px" } },
 				h("div", { className: "dsh-panel-resize-top", onMouseDown: startResize("bottom") }),
 				h("div", { className: "dsh-panel-header" },
 					h(TabBar, { side: "bottom", st: bs }),
-					h("button", { className: "dsh-panel-toggle", title: t("collapse"), onClick: function () { toggle("bottom"); } }, "▾")),
+					h("button", { className: "dsh-panel-toggle", title: t("collapse"), onClick: function () { toggle("bottom"); }, style: { display: "inline-flex", alignItems: "center", justifyContent: "center" } }, dshIcon("chevron-down", 14))),
 				h("div", { className: "dsh-panel-body" }, active.render({ side: "bottom", tab: active.id, h: h, React: React })));
 		}
 
@@ -1130,12 +1177,12 @@ function applyRightPanel(ctx) {
 					title: t("toggleRight"),
 					onClick: function () { window.__DSH_PANELS__.toggle("right"); },
 					style: toggleBtnStyle(st.right.open),
-				}, st.right.open ? "◧" : "◨"),
+				}, dshIcon("panel-right", 16)),
 				h("button", {
 					title: t("toggleBottom"),
 					onClick: function () { window.__DSH_PANELS__.toggle("bottom"); },
 					style: toggleBtnStyle(st.bottom.open),
-				}, "▤"));
+				}, dshIcon("panel-bottom", 16)));
 		}
 
 		function toggleBtnStyle(active) {
@@ -1156,10 +1203,26 @@ function applyRightPanel(ctx) {
 			}, "right-panel: dictionaries");
 			t = ctx.locale.bind(NS);
 
+			var standardTabs = {
+				files: { side: "right", id: "files", label: function () { return t("files"); }, order: 10, render: function () { return h(FilesTab); } },
+				changes: { side: "right", id: "changes", label: function () { return t("changes"); }, order: 20, render: function () { return h(ChangesTab); } },
+				terminal: { side: "bottom", id: "terminal", label: function () { return t("terminal"); }, order: 10, render: function () { return h(TerminalTab); } },
+			};
+			function ensureStandardTab(id) {
+				var P = window.__DSH_PANELS__;
+				if (!P || !standardTabs[id]) return;
+				var def = standardTabs[id];
+				var st = P.getState();
+				var list = def.side === "right" ? st.right.tabs : st.bottom.tabs;
+				for (var i = 0; i < list.length; i++) if (list[i].id === id) { P.setTab(def.side, id); return; }
+				P.registerPanel({ side: def.side, id: def.id, label: def.label, order: def.order, closable: true, render: def.render });
+				P.setTab(def.side, id);
+			}
+			window.__DSH_TABS__ = { ensure: ensureStandardTab };
 			whenPanels(function (P) {
-				P.registerPanel({ side: "right", id: "files", label: function () { return t("files"); }, order: 10, render: function () { return h(FilesTab); } });
-				P.registerPanel({ side: "right", id: "changes", label: function () { return t("changes"); }, order: 20, render: function () { return h(ChangesTab); } });
-				P.registerPanel({ side: "bottom", id: "terminal", label: function () { return t("terminal"); }, order: 10, render: function () { return h(TerminalTab); } });
+				P.registerPanel({ side: "right", id: "files", label: function () { return t("files"); }, order: 10, closable: true, render: function () { return h(FilesTab); } });
+				P.registerPanel({ side: "right", id: "changes", label: function () { return t("changes"); }, order: 20, closable: true, render: function () { return h(ChangesTab); } });
+				P.registerPanel({ side: "bottom", id: "terminal", label: function () { return t("terminal"); }, order: 10, closable: true, render: function () { return h(TerminalTab); } });
 			});
 
 			ctx.slots.inject("conversation.session.header.utilities", function () {
