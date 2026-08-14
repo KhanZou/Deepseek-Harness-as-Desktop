@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0 - merge frameworks into dsh-desktop-framework
+
+- **Fix:** `dsh-panels-framework` client crashed with `RightPanelShell is not defined` — the `RightPanelShell` declaration, its `usePanelState` effect subscription, and the `TabBar` component were lost in an edit, leaving the panel shell body inside `usePanelState`. Reconstructed all three.
+- **Merge:** `dsh-settings-framework` + `dsh-panels-framework` + `dsh-right-panel` are now one plugin, `dsh-desktop-framework`. Install one package instead of three:
+  ```powershell
+  corepack pnpm dsh plugin --profile web add D:\dsh-desktop-framework
+  ```
+  The three former packages are removed from the repository; the merged plugin keeps the same `window.__DSH_SETTINGS__` / `window.__DSH_PANELS__` APIs.
+- README (en/zh) and docs updated for the merge.
+
+
 All notable changes to **DeepSeek Harness as Desktop**.
 
 ## [0.5.0] - 2026-08-14

@@ -1,4 +1,0 @@
-# dsh-right-panel bundle patch: inserts the right-panel host row.
-- insert:
-    - id: right-panel
-      name: '@dsh-external/dsh-client-ui-right-panel'

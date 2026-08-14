@@ -1,0 +1,4 @@
+# dsh-desktop-framework bundle patch: inserts the unified desktop-framework host row.
+- insert:
+    - id: desktop-framework
+      name: '@dsh-external/dsh-desktop-framework'

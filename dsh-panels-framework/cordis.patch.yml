@@ -1,4 +1,0 @@
-# dsh-panels-framework bundle patch: inserts the panels-framework host row.
-- insert:
-    - id: panels-framework
-      name: '@dsh-external/dsh-panels-framework'

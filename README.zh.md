@@ -12,9 +12,9 @@
 - 🔁 **开机自启动**——可选 HKCU `Run` 注册。
 - 🔔 **真实 Windows Toast**——任务完成通知进入操作中心（AUMID 注册的无包 Toast），失败回退托盘气泡。
 - ⚙️ **DSH Web 设置里的"桌面客户端"tab**——管理关闭按钮行为、开机自启、会话通知；已本地化（zh/en），跟随 DSH 语言切换。
-- 🧩 **通用设置框架**——任意插件可用 `registerTab`/`registerItem`/`get`/`set`/`subscribe` 声明式添加设置 tab/条目，带持久化与跨插件同步（见 [docs/settings-framework.md](docs/settings-framework.md)）。
+- 🧩 **统一桌面框架**——单个插件 `dsh-desktop-framework` 合并了原 settings/panels 框架与右侧面板：任意插件可用 `registerTab`/`registerItem`/`get`/`set`/`subscribe` 声明式添加设置 tab/条目，也可用 `registerPanel` 注册右侧/底部面板 tab，带持久化与跨插件同步（见 [docs/settings-framework.md](docs/settings-framework.md) 与 [docs/panels-framework.md](docs/panels-framework.md)）。
 - 🎨 **独立皮肤中心**——独立的 **皮肤中心** 设置 tab（独立插件 `dsh-skin-gallery`）：每种皮肤一张卡片（左上角名称、中间大预览图、选中高亮、可滚动网格），包含 DSH 本体内置默认皮肤；切换后自动刷新并持久化。
-- 📐 **右侧/底部面板框架**——通用面板框架（`dsh-panels-framework`）渲染右侧栏与底部栏，带 tab、一键折叠/展开把手、拖拽调宽、状态持久化；任意插件可注册面板 tab（见 [docs/panels-framework.md](docs/panels-framework.md)）。
+- 📐 **右侧/底部面板框架**——属于 `dsh-desktop-framework`：渲染右侧栏与底部栏，带 tab、一键折叠/展开把手、拖拽调宿、状态持久化；任意插件可注册面板 tab（见 [docs/panels-framework.md](docs/panels-framework.md)）。
 - 📁 **文件与变更面板**——右侧面板 **文件** tab（文件树 + 文本/图片预览）与 **变更** tab（git status + stage/unstage/discard）。
 - 💻 **迷你终端**——底部面板 **终端** tab：在 harness 目录执行命令（支持 `cd`），由桌面客户端后端驱动。
 - 🌿 **Git 图谱视图**——对话视图新增第四个 tab（对话 / 轨迹 / **Git 图谱**）：分支选择器、切换分支、提交历史泳道图。
@@ -29,10 +29,8 @@ Deepseek-Harness-as-Desktop/
 │   ├── lib/index.js           #   DSH 宿主插件：窗口拉起、turn/end Toast、皮肤清单
 │   └── shell/                 #   DshDesktop.exe + 源码 + WebView2 SDK + Toast 脚本 + whale.ico
 ├── dsh-desktop-settings/      # 客户端插件：桌面设置页（关闭行为/自启/通知）
-├── dsh-settings-framework/    # 通用设置框架（tab/条目/同步），任何插件可用
+├── dsh-desktop-framework/     # 统一桌面框架：设置 + 面板 + 文件/变更/终端
 ├── dsh-skin-gallery/          # 独立卡片式皮肤中心（独立设置 tab）
-├── dsh-panels-framework/      # 通用右侧/底部面板框架（壳 + 折叠展开 + 调宽）
-├── dsh-right-panel/           # 文件/变更（右侧）+ 终端（底部）tab 与头部开关
 ├── dsh-git-graph/             # Git 图谱对话视图（分支选择 + 提交泳道）
 ├── dsh-live-stats/            # 逐轮令牌统计行
 └── docs/                      # skin-compatibility / settings-framework / panels-framework
@@ -69,10 +67,8 @@ Deepseek-Harness-as-Desktop/
    cd /d "D:\deepseek harness"
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-window
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-settings
-   corepack pnpm dsh plugin --profile web add D:\dsh-settings-framework
+   corepack pnpm dsh plugin --profile web add D:\dsh-desktop-framework
    corepack pnpm dsh plugin --profile web add D:\dsh-skin-gallery
-   corepack pnpm dsh plugin --profile web add D:\dsh-panels-framework
-   corepack pnpm dsh plugin --profile web add D:\dsh-right-panel
    corepack pnpm dsh plugin --profile web add D:\dsh-git-graph
    corepack pnpm dsh plugin --profile web add D:\dsh-live-stats
    ```
@@ -141,7 +137,7 @@ Deepseek-Harness-as-Desktop/
 
 ## 面板（右侧栏 + 底部终端）
 
-`dsh-panels-framework` 渲染面板壳；`dsh-right-panel` 注册 tab 与头部开关。
+`dsh-desktop-framework` 渲染面板壳并注册 Files/Changes/Terminal tab 与头部开关。
 会话头部（模式选择旁）的 **◧ / ◨** 与 **▤** 按钮可一键折叠/展开右侧面板与
 底部终端；折叠后变成右侧/底部的细长把手，点击即可展开。拖拽面板边缘可调整
 大小；宽度/高度与开关状态都会持久化。其他插件也可注册自己的面板 tab

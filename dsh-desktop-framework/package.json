@@ -1,0 +1,23 @@
+{
+  "name": "@dsh-external/dsh-desktop-framework",
+  "description": "Unified desktop framework for the DSH Web UI: generic settings tabs/items (window.__DSH_SETTINGS__), right/bottom panel shells (window.__DSH_PANELS__), and the Files/Changes/Terminal tabs with session-header toggles. Merge of dsh-settings-framework + dsh-panels-framework + dsh-right-panel.",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "MIT"
+}

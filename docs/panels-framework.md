@@ -1,3 +1,6 @@
+> **Note:** this framework now ships as part of `dsh-desktop-framework` (merged with `dsh-panels-framework` / `dsh-right-panel`). Install `dsh-desktop-framework` instead of this separate package.
+>
+
 # dsh-panels-framework
 
 The **panels framework** is the visual counterpart of `dsh-settings-framework`:

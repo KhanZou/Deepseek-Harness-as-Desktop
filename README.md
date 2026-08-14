@@ -12,9 +12,9 @@
 - 🔁 **Launch at logon** — optional HKCU `Run` key registration.
 - 🔔 **Real Windows toasts** — task-completion notifications appear in the Action Center (AUMID-registered unpackaged toast), with tray-balloon fallback.
 - ⚙️ **Desktop settings tab** — a **Desktop** section in *Settings* manages close-button behavior, auto-start, and notifications. Localized (zh/en), follows the DSH language switcher.
-- 🧩 **Generic settings framework** — any plugin can add Settings tabs/items declaratively (`registerTab`/`registerItem`/`get`/`set`/`subscribe`) with persistence and cross-plugin sync (see [docs/settings-framework.md](docs/settings-framework.md)).
+- 🧩 **Unified desktop framework** — one plugin (`dsh-desktop-framework`) merges the former settings/panels frameworks and the right-panel tabs: any plugin can add Settings tabs/items declaratively (`registerTab`/`registerItem`/`get`/`set`/`subscribe`) and register right/bottom panel tabs (`registerPanel`), with persistence and cross-plugin sync (see [docs/settings-framework.md](docs/settings-framework.md) and [docs/panels-framework.md](docs/panels-framework.md)).
 - 🎨 **Standalone skin center** — a separate **Skin Center** Settings tab (its own plugin) shows one card per skin: name top-left, large preview in the middle, highlighted selection, scrollable grid. Includes the DSH built-in default; switching persists and auto-refreshes.
-- 📐 **Right/bottom panels framework** — a generic panel framework (`dsh-panels-framework`) that renders a right column and a bottom bar with tabs, one-click collapse/expand rails, drag-to-resize, and persisted state. Any plugin can register tabs (see [docs/panels-framework.md](docs/panels-framework.md)).
+- 📐 **Right/bottom panels framework** — part of `dsh-desktop-framework`: renders a right column and a bottom bar with tabs, one-click collapse/expand rails, drag-to-resize, and persisted state. Any plugin can register tabs (see [docs/panels-framework.md](docs/panels-framework.md)).
 - 📁 **Files & SCM panel** — a **Files** tab (file tree + text/image preview) and a **Changes** tab (git status with stage/unstage/discard) in the right panel.
 - 💻 **Mini terminal** — a **Terminal** tab in the bottom panel: run commands in the harness directory (`cd` supported), backed by the desktop client.
 - 🌿 **Git Graph view** — a fourth conversation view tab (beside *Chat* / *Trajectory*) with a branch selector, checkout, and a commit-history swimlane graph.
@@ -29,10 +29,8 @@ Deepseek-Harness-as-Desktop/
 │   ├── lib/index.js           #   DSH host plugin: window launch, turn/end toast, skin manifest
 │   └── shell/                 #   DshDesktop.exe + source + WebView2 SDK + toast scripts + whale.ico
 ├── dsh-desktop-settings/      # Client plugin: Desktop settings tab (close behavior, auto-start, notify)
-├── dsh-settings-framework/    # Generic settings framework (tabs/items/sync) for any plugin
+├── dsh-desktop-framework/     # Unified desktop framework: settings + panels + Files/Changes/Terminal
 ├── dsh-skin-gallery/          # Standalone card-based skin center (own Settings tab)
-├── dsh-panels-framework/      # Generic right/bottom panel framework (shells + collapse/expand + resize)
-├── dsh-right-panel/           # Files / Changes (right) and Terminal (bottom) tabs + header toggles
 ├── dsh-git-graph/             # Git Graph conversation view (branch selector + commit swimlanes)
 ├── dsh-live-stats/            # Per-turn token statistics line
 └── docs/                      # skin-compatibility, settings-framework, panels-framework
@@ -72,10 +70,8 @@ Deepseek-Harness-as-Desktop/
    cd /d "D:\deepseek harness"
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-window
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-settings
-   corepack pnpm dsh plugin --profile web add D:\dsh-settings-framework
+   corepack pnpm dsh plugin --profile web add D:\dsh-desktop-framework
    corepack pnpm dsh plugin --profile web add D:\dsh-skin-gallery
-   corepack pnpm dsh plugin --profile web add D:\dsh-panels-framework
-   corepack pnpm dsh plugin --profile web add D:\dsh-right-panel
    corepack pnpm dsh plugin --profile web add D:\dsh-git-graph
    corepack pnpm dsh plugin --profile web add D:\dsh-live-stats
    ```
@@ -151,8 +147,8 @@ convention.
 
 ## Panels (right column + bottom terminal)
 
-`dsh-panels-framework` renders the panel shells; `dsh-right-panel` registers
-the tabs and the header toggle buttons. Use the **◧ / ◨** and **▤** buttons in
+`dsh-desktop-framework` renders the panel shells and registers the
+Files/Changes/Terminal tabs and the header toggle buttons. Use the **◧ / ◨** and **▤** buttons in
 the session header (next to the mode selector) to one-click collapse/expand
 the right panel and the bottom terminal. Collapsed panels become slim rails on
 the right/bottom edges — click them to expand again. Drag the panel edges to

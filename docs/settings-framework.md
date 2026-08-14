@@ -1,3 +1,6 @@
+> **Note:** this framework now ships as part of `dsh-desktop-framework` (merged with `dsh-panels-framework` / `dsh-right-panel`). Install `dsh-desktop-framework` instead of this separate package.
+>
+
 # Settings framework (design)
 
 A generic, plugin-facing settings framework for DeepSeek Harness. It lets any
