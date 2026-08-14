@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.2] - 2026-08-14
+
+### Fixed / Cleaned
+- **Removed hardcoded paths and made the shell relocatable**:
+  - `serverCmd` default no longer points at
+    `C:\Program Files\nodejs\corepack.cmd`; it resolves `corepack.cmd` from
+    `PATH` and is configurable via `config.json` (`serverCmd`).
+  - `serverWorkDir` default no longer hardcodes `D:\deepseek harness`; the
+    shell reads it from `config.json`/`--workdir` and skips auto-start (with a
+    clear status message) when it is unset.
+  - Client plugins read the shell API base from the injected
+    `window.__DSH_DESKTOP_API__` (the exe injects the configured `apiPort` into
+    the WebView2) instead of a hardcoded `http://127.0.0.1:3980`.
+  - `dsh-desktop-framework` CLI: `DSH_DESKTOP_WEB` env override; the
+    `samples` default moved from `D:\dsh-test-files` to
+    `<cwd>/dsh-samples`.
+  - `dsh-desktop-window` host: `DSH_DESKTOP_BROWSER` env override for the
+    fallback browser; the native loading label uses system colors/font.
+  - Settings/git-graph/live-stats clients: fixed px font sizes to relative
+    `em`; brand colors now prefer theme tokens with fallbacks.
 ## [0.8.1] - 2026-08-14
 
 ### Fixed

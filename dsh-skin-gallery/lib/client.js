@@ -17,7 +17,7 @@ window.__ModuleLoader__.load({
 		var useState = React.useState;
 		var useEffect = React.useEffect;
 
-		var API = "http://127.0.0.1:3980";
+		var API = (typeof window !== "undefined" && window.__DSH_DESKTOP_API__) || "http://127.0.0.1:3980";
 		var NS = "skinGallery";
 
 		var dict = {

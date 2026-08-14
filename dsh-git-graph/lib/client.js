@@ -13,7 +13,7 @@ window.__ModuleLoader__.load({
 		var useState = React.useState;
 		var useEffect = React.useEffect;
 
-		var API = "http://127.0.0.1:3980";
+		var API = (typeof window !== "undefined" && window.__DSH_DESKTOP_API__) || "http://127.0.0.1:3980";
 		var NS = "gitGraph";
 
 		var dict = {
@@ -247,7 +247,7 @@ window.__ModuleLoader__.load({
 												height: "2px", background: "rgba(128,128,128,.5)",
 											},
 										}) : null),
-									h("div", { style: { flex: "none", fontFamily: "Consolas, monospace", color: "#e3b341", width: "70px", minWidth: "70px" } }, c.short),
+									h("div", { style: { flex: "none", fontFamily: "Consolas, monospace", color: "var(--dsw-alias-state-warning-primary, #e3b341)", width: "70px", minWidth: "70px" } }, c.short),
 									h("div", { style: { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.subject),
 									h("div", { style: { flex: "none", fontSize: "12px", opacity: ".65", marginLeft: "12px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
 										c.author + " · " + fmtDate(c.date)));

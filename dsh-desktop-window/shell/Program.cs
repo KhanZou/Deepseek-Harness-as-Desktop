@@ -33,6 +33,7 @@ namespace DshDesktop
         public string desiredSkin = "";
         public string activeSkin = "";
         public string serverWorkDir = "";
+        public string serverCmd = "";
         public Dictionary<string, string> settings = new Dictionary<string, string>();
         public int apiPort = 3980;
     }
@@ -161,7 +162,7 @@ namespace DshDesktop
             string userData = Program.BaseDir + "\\.wv2-profile";
             string serverWorkDir = "";
             string serverLog = "";
-            string serverCmd = "C:\\Program Files\\nodejs\\corepack.cmd";
+            string serverCmd = "";
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -229,13 +230,12 @@ namespace DshDesktop
             this.url = url;
             this.userData = userData;
             this.port = port;
-            this.serverCmd = serverCmd;
 
             cfg = ConfigStore.Load();
-            this.serverWorkDir = string.IsNullOrEmpty(serverWorkDir)
-                ? (string.IsNullOrEmpty(cfg.serverWorkDir) ? "D:\\deepseek harness" : cfg.serverWorkDir)
-                : serverWorkDir;
-            this.serverLog = this.serverWorkDir + "\\dsh-web.log";
+            this.serverCmd = !string.IsNullOrEmpty(cfg.serverCmd) ? cfg.serverCmd
+                : (!string.IsNullOrEmpty(serverCmd) ? serverCmd : "corepack.cmd");
+            this.serverWorkDir = !string.IsNullOrEmpty(serverWorkDir) ? serverWorkDir : cfg.serverWorkDir;
+            this.serverLog = string.IsNullOrEmpty(this.serverWorkDir) ? "" : this.serverWorkDir + "\\dsh-web.log";
 
             Text = "DeepSeek Harness";
             StartPosition = FormStartPosition.CenterScreen;
@@ -252,8 +252,8 @@ namespace DshDesktop
             statusLabel = new Label();
             statusLabel.Dock = DockStyle.Fill;
             statusLabel.TextAlign = ContentAlignment.MiddleCenter;
-            statusLabel.Font = new Font("Microsoft YaHei UI", 15F);
-            statusLabel.ForeColor = Color.FromArgb(77, 107, 254);
+            statusLabel.Font = SystemFonts.MessageBoxFont;
+            statusLabel.ForeColor = SystemColors.ControlText;
             statusLabel.Text = "正在启动 DeepSeek Harness 服务…";
             Controls.Add(statusLabel);
             statusLabel.BringToFront();
@@ -549,7 +549,7 @@ namespace DshDesktop
         {
             "closeBehavior", "autoStart", "notifyOnComplete", "trayHint",
             "notifyPreview", "quickReply", "approvalNotify", "previewMaxChars", "approvalTimeoutSec",
-            "desiredSkin", "activeSkin", "serverWorkDir", "apiPort",
+            "desiredSkin", "activeSkin", "serverWorkDir", "serverCmd", "apiPort",
         };
 
         public Config GetConfig() { return cfg; }
@@ -580,6 +580,7 @@ namespace DshDesktop
             view["desiredSkin"] = cfg.desiredSkin;
             view["activeSkin"] = cfg.activeSkin;
             view["serverWorkDir"] = EffectiveWorkDir();
+            view["serverCmd"] = this.serverCmd;
             view["apiPort"] = cfg.apiPort;
             foreach (KeyValuePair<string, string> kv in cfg.settings) view[kv.Key] = kv.Value;
             return view;
@@ -606,7 +607,8 @@ namespace DshDesktop
             else if (key == "approvalNotify") cfg.approvalNotify = (value == "true");
             else if (key == "previewMaxChars") { int n; if (int.TryParse(value, out n)) cfg.previewMaxChars = n; }
             else if (key == "approvalTimeoutSec") { int n; if (int.TryParse(value, out n)) cfg.approvalTimeoutSec = n; }
-            else if (key == "serverWorkDir") cfg.serverWorkDir = value;
+            else if (key == "serverWorkDir") { cfg.serverWorkDir = value; this.serverWorkDir = value; this.serverLog = string.IsNullOrEmpty(value) ? "" : value + "\\dsh-web.log"; }
+            else if (key == "serverCmd") { cfg.serverCmd = value; this.serverCmd = value; }
             else cfg.settings[key] = value;
             ConfigStore.Save(cfg);
             if (key == "autoStart") SyncAutoStart(cfg.autoStart);
@@ -645,6 +647,11 @@ namespace DshDesktop
         private void StartServerIfNeeded()
         {
             if (IsPortOpen(port)) return;
+            if (string.IsNullOrEmpty(serverWorkDir))
+            {
+                statusLabel.Text = "Server work directory not configured (set serverWorkDir to enable auto-start).";
+                return;
+            }
             try
             {
                 string args = "/c cd /d \"" + serverWorkDir + "\" && \"" + serverCmd + "\" pnpm dsh web >> \"" + serverLog + "\" 2>&1";
@@ -711,6 +718,8 @@ namespace DshDesktop
                 core.Settings.AreDevToolsEnabled = false;
                 core.Settings.IsStatusBarEnabled = false;
                 core.NavigationCompleted += OnNavigationCompleted;
+                // Tell the client plugins where this shell's API lives (config-driven port).
+                try { core.AddScriptToExecuteOnDocumentCreatedAsync("window.__DSH_DESKTOP_API__ = 'http://127.0.0.1:" + cfg.apiPort + "';"); } catch { }
                 statusLabel.Visible = false;
                 webView.Source = new Uri(url);
             }
@@ -796,6 +805,7 @@ namespace DshDesktop
                         if (map.TryGetValue("activeSkin", out v)) c.activeSkin = Convert.ToString(v);
                         if (map.TryGetValue("trayHint", out v)) c.trayHint = Convert.ToBoolean(v);
                         if (map.TryGetValue("serverWorkDir", out v)) c.serverWorkDir = Convert.ToString(v);
+                        if (map.TryGetValue("serverCmd", out v)) c.serverCmd = Convert.ToString(v);
                         if (map.TryGetValue("settings", out v) && v is Dictionary<string, object>) { c.settings = ((Dictionary<string, object>)v).ToDictionary(kv => kv.Key, kv => Convert.ToString(kv.Value)); }
                         if (map.TryGetValue("apiPort", out v)) { int p; if (int.TryParse(Convert.ToString(v), out p)) c.apiPort = p; }
                     }

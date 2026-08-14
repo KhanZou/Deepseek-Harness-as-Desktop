@@ -125,7 +125,7 @@ window.__ModuleLoader__.load({
 				chips.map(function (c, i) {
 					return h("span", { key: c.k, style: { display: "inline-flex", gap: "4px", alignItems: "center" } },
 						h("span", { style: { opacity: ".6" } }, c.k + ":"),
-						h("span", { style: { fontFamily: "Consolas, monospace", color: "#7ee787" } }, c.v));
+						h("span", { style: { fontFamily: "Consolas, monospace", color: "var(--dsw-alias-state-success-primary, #7ee787)" } }, c.v));
 				}));
 		}
 

@@ -13,7 +13,7 @@ window.__ModuleLoader__.load({
 		var React = require("react");
 		var h = React.createElement;
 
-		var API = "http://127.0.0.1:3980";
+		var API = (typeof window !== "undefined" && window.__DSH_DESKTOP_API__) || "http://127.0.0.1:3980";
 		var NS = "desktopSettings";
 
 		var dict = {
@@ -138,7 +138,7 @@ window.__ModuleLoader__.load({
 				sf.registerItem({ tabId: "desktop", key: "testNotifyAdvanced", type: "action", label: t("testNotifyAdvanced"), action: sendTestNotifyAdvanced });
 				sf.registerItem({ tabId: "desktop", key: "skinGalleryHint", type: "custom",
 					render: function () {
-						return h("div", { style: { fontSize: "12px", opacity: ".75", padding: "4px 0" } }, t("skinGalleryHint"));
+						return h("div", { style: { fontSize: "0.75em", opacity: ".75", padding: "4px 0" } }, t("skinGalleryHint"));
 					} });
 			});
 		}

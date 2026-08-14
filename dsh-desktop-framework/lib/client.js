@@ -51,7 +51,7 @@ function applySettings(ctx) {
 		var useState = React.useState;
 		var useEffect = React.useEffect;
 
-		var API = "http://127.0.0.1:3980";
+		var API = (typeof window !== "undefined" && window.__DSH_DESKTOP_API__) || "http://127.0.0.1:3980";
 
 		var ctxRef = null;
 		var tabs = {};        // id -> { id, label, order }
@@ -770,7 +770,7 @@ function applyRightPanel(ctx) {
 		var useEffect = React.useEffect;
 		var useRef = React.useRef;
 
-		var API = "http://127.0.0.1:3980";
+		var API = (typeof window !== "undefined" && window.__DSH_DESKTOP_API__) || "http://127.0.0.1:3980";
 		var NS = "rightPanel";
 
 		var dict = {
@@ -1256,7 +1256,7 @@ function applyDesktopExtras(ctx) {
     var useEffect = React.useEffect;
     var useRef = React.useRef;
 
-    var API = "http://127.0.0.1:3980";
+    var API = (typeof window !== "undefined" && window.__DSH_DESKTOP_API__) || "http://127.0.0.1:3980";
     var NS = "desktopExtras";
     var t = null;
 

@@ -76,3 +76,11 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /
   - `POST /api/toast-action`：接收 `{action: reply|approve|reject|open, sessionId, rpcId, approvalId, text}`，由 exe 调用后端 `/api/session.prompt` 或 `/api/respond`。
   - `POST /api/dismiss`：`{tag, group}` 按 tag 移除通知中心中的 toast。
 - **新增配置项**（`config.json`）：`notifyPreview`（默认 true）、`quickReply`（默认 true）、`approvalNotify`（默认 true）、`previewMaxChars`（默认 300）、`approvalTimeoutSec`（默认 600）。
+
+## 配置说明（v0.8.2）
+
+- 所有路径均可在 `config.json` 配置，代码不写死绝对路径：
+  - `serverWorkDir`：dsh 后端目录（为空时不自动拉起服务，状态栏会提示）。
+  - `serverCmd`：启动后端的命令（默认按 PATH 解析 `corepack.cmd`）。
+  - `apiPort`：本机 API 端口；桌面客户端会把 `window.__DSH_DESKTOP_API__` 注入 WebView2，各插件设置页读取该值，而非硬编码端口。
+- 命令行参数：`--url`、`--port`、`--workdir` 仍可覆盖默认值。

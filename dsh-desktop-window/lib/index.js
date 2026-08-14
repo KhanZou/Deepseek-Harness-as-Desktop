@@ -136,8 +136,9 @@ function openWindow(cfg) {
     return
   }
 
-  // Fallback: Edge/Chrome app-mode window.
-  const browser = BROWSERS.find((p) => exists(p))
+  // Fallback: Edge/Chrome app-mode window (DSH_DESKTOP_BROWSER overrides the list).
+  const envBrowser = process.env.DSH_DESKTOP_BROWSER
+  const browser = (envBrowser && exists(envBrowser)) ? envBrowser : BROWSERS.find((p) => exists(p))
   if (!browser) {
     log('no native shell and no Edge/Chrome found; falling back to default browser')
     const target = process.platform === 'win32'

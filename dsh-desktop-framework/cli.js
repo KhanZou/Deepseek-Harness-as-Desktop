@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const API = process.env.DSH_DESKTOP_API || 'http://127.0.0.1:3980'
-const WEB = 'http://127.0.0.1:3080'
+const WEB = process.env.DSH_DESKTOP_WEB || 'http://127.0.0.1:3080'
 
 function reqJson(url, options = {}, body = undefined) {
   return new Promise((resolve, reject) => {
@@ -95,7 +95,7 @@ async function settings(k, v) {
 }
 
 function samples(dir) {
-  const d = dir || 'D:\\dsh-test-files'
+  const d = dir || path.join(process.cwd(), 'dsh-samples')
   fs.mkdirSync(d, { recursive: true })
   const md = `# Sample Document\n\n## Section A\n\nThis is **bold** and *italic* and \`code\`.\n\n- item one\n- item two\n\n\`\`\`js\nconst x = 1\n\`\`\`\n`
   fs.writeFileSync(path.join(d, 'sample.md'), md)
