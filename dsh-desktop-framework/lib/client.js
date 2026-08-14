@@ -86,7 +86,17 @@ function applySettings(ctx) {
 				var b = (next && next[k] !== undefined) ? String(next[k]) : "";
 				if (a !== b) changed.push(k);
 			});
-			cache = next || {};
+			// Normalize every value to a string: the exe returns booleans for
+			// typed keys (autoStart / notifyOnComplete / trayHint) while the
+			// UI compares strings ("true"/"1"). Keeping the cache string-only
+			// makes checkboxes reflect the persisted state correctly.
+			var norm = {};
+			if (next) {
+				Object.keys(next).forEach(function (k) {
+					norm[k] = next[k] === undefined || next[k] === null ? "" : String(next[k]);
+				});
+			}
+			cache = norm;
 			changed.forEach(function (k) { emit(k); });
 		}
 
@@ -169,7 +179,7 @@ function applySettings(ctx) {
 			var value = get(item.key);
 			if (value === undefined) value = "";
 			if (item.type === "toggle") {
-				return h("input", { type: "checkbox", checked: value === "true" || value === "1", onChange: function (e) { onChange(e.target.checked); } });
+				return h("input", { type: "checkbox", checked: value === true || value === "true" || value === "1", onChange: function (e) { onChange(e.target.checked); } });
 			}
 			if (item.type === "select") {
 				return h("select", { value: value, onChange: function (e) { onChange(e.target.value); }, style: { padding: "4px 8px" } },

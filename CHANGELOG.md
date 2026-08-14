@@ -25,6 +25,12 @@
   key and `type: "action"` items never worked. Both payloads are now stored and
   `TabShellView` renders custom/action items correctly (this is what makes the
   Skin Center cards and the Desktop tab's test-notify action actually render).
+- **Settings framework**: `applyChanges` now normalizes every value to a
+  string. The exe returns real booleans for the typed keys
+  (`autoStart` / `notifyOnComplete` / `trayHint`), but the UI compared strings
+  (`"true"` / `"1"`), so the Desktop tab's checkboxes always appeared unchecked
+  and only one could look enabled at a time (radio-like). The three options are
+  now independent checkboxes that reflect and persist their own state.
 
 ## 0.3.0 - themed non-floating panels, multi-type viewers, conversation links
 
