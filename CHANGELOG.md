@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.1] - 2026-08-14
+
+### Fixed
+- **Tray "Exit" now stops the background service**: previously the exe only
+  killed the backend when it had started it itself (tracking the `cmd.exe`
+  wrapper PID), so a service started elsewhere survived tray-exit. On exit the
+  shell now locates whatever process is listening on the web port (3080) via
+  `netstat` and terminates its whole process tree with `taskkill /PID <pid> /T
+  /F`, in addition to killing the tree it spawned itself.
+
 ## [0.8.0] - 2026-08-14
 
 ### Added

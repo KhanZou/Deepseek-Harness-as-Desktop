@@ -486,12 +486,23 @@ namespace DshDesktop
 
         private void StopServerIfOwned()
         {
-            if (!startedServer || serverPid <= 0) return;
+            // 1) If this exe spawned the server, kill its whole process tree.
+            if (startedServer && serverPid > 0) KillTree(serverPid);
+            // 2) Regardless of who started it, stop whatever is listening on
+            //    the web port (the DSH backend) so "Exit" fully shuts down.
+            int pid = FindPortPid(port);
+            if (pid > 0) KillTree(pid);
+            startedServer = false;
+        }
+
+        private void KillTree(int pid)
+        {
+            if (pid <= 0) return;
             try
             {
                 Process p = new Process();
                 p.StartInfo.FileName = "taskkill.exe";
-                p.StartInfo.Arguments = "/PID " + serverPid + " /T /F";
+                p.StartInfo.Arguments = "/PID " + pid + " /T /F";
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.CreateNoWindow = true;
                 p.Start();
@@ -500,6 +511,38 @@ namespace DshDesktop
             catch
             {
             }
+        }
+
+        private static int FindPortPid(int port)
+        {
+            try
+            {
+                Process p = new Process();
+                p.StartInfo.FileName = "netstat.exe";
+                p.StartInfo.Arguments = "-ano";
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.CreateNoWindow = true;
+                p.StartInfo.RedirectStandardOutput = true;
+                p.Start();
+                string output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit(3000);
+                string want = ":" + port;
+                foreach (string line in output.Split('\n'))
+                {
+                    string t = (line ?? "").Trim();
+                    if (!t.StartsWith("TCP")) continue;
+                    string[] parts = t.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length < 5) continue;
+                    if (!parts[1].EndsWith(want, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!parts[3].Equals("LISTENING", StringComparison.OrdinalIgnoreCase)) continue;
+                    int pid;
+                    if (int.TryParse(parts[4], out pid)) return pid;
+                }
+            }
+            catch
+            {
+            }
+            return 0;
         }
 
         private static readonly string[] KnownKeys = new string[]
