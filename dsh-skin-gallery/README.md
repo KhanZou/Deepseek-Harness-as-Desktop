@@ -25,7 +25,7 @@ a ✓ badge.
 
 - `dsh-desktop-window` (DshDesktop.exe) running with its local API on
   `http://127.0.0.1:3980`.
-- `dsh-settings-framework` installed (the gallery registers its tab through it).
+- `dsh-desktop-framework` installed (the gallery registers its tab through its settings framework).
 
 ## Install
 

@@ -65,7 +65,7 @@ Deepseek-Harness-as-Desktop/
    `D:\dsh-desktop-window`），双击 `dsh-desktop-window\shell\DshDesktop.exe`
    （或用 `Program.cs` 自行编译，见下文）。它会按需启动后端并打开原生窗口。
 
-3. **安装插件**到 web profile（路径指向你放置的文件夹）：
+3. **安装插件**到 web profile。本仓库自带全部六个插件——每个插件是仓库根目录下的一个文件夹(`dsh-desktop-window/`、`dsh-desktop-settings/`、`dsh-desktop-framework/`、`dsh-skin-gallery/`、`dsh-git-graph/`、`dsh-live-stats/`)。把 `add` 指向对应文件夹（可把文件夹复制到任意位置，或直接用本仓库内的路径）：
    ```powershell
    cd /d "D:\deepseek harness"
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-window
@@ -77,7 +77,7 @@ Deepseek-Harness-as-Desktop/
    ```
    重启桌面应用后：
    - **设置 → 桌面客户端**——关闭行为、开机自启、会话通知。
-   - **设置 → 皮肤中心**——卡片式几选一皮肤，切换自动刷新。
+   - **设置 → 皮肤中心**——现代预览卡片式皮肤（迷你窗口缩略图按真实主题绘制），切换自动刷新。
    - 会话头部 **◧ ◨ ▤** 按钮——一键折叠/展开右侧面板与底部终端。
    - 对话标签——**对话 / 轨迹 / Git 图谱**。
    - 每条回答下方出现**实时令牌统计**。

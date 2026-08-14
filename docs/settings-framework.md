@@ -8,8 +8,8 @@ DSH client plugin add **Settings tabs and items declaratively**, persist them,
 and **synchronize changes across plugins** — without hand-writing React slot
 registrations or scope controllers.
 
-> Its visual sibling — a generic right/bottom **panel framework** — lives in
-> [dsh-panels-framework](../dsh-panels-framework) (see [docs/panels-framework.md](panels-framework.md)).
+> Its visual sibling — a generic right/bottom **panel framework** — ships in
+> the same `dsh-desktop-framework` package (see [docs/panels-framework.md](panels-framework.md)).
 
 ## Why it exists / what DSH already provides
 
@@ -32,7 +32,7 @@ items, the framework renders them and handles persistence/sync.
 │ Consumer plugins (any DSH client plugin)                    │
 │   registerTab / registerItem / get / set / subscribe        │
 ├─────────────────────────────────────────────────────────────┤
-│ dsh-settings-framework (this repo)                          │
+│ dsh-desktop-framework (this repo)                          │
 │   - registry (tabs, items)                                  │
 │   - renderer (Settings sections + controls)                 │
 │   - sync: local pub/sub + periodic store refresh            │
@@ -98,9 +98,10 @@ settings the DSH server owns; the framework would expose the same
 
 The **Desktop** tab in this repo (dsh-desktop-settings) is itself a framework
 consumer (dogfooding): it registers its close-behavior/auto-start/notification
-items, a test-notify action, and a custom skin center through the framework.
+items and a test-notify action through the framework. (The skin center now
+lives in its own `dsh-skin-gallery` plugin.)
 
-See [dsh-settings-framework/README.md](../dsh-settings-framework/README.md) for the full consumer API and a complete example plugin.
+See [dsh-desktop-framework/README.md](../dsh-desktop-framework/README.md) for the merged consumer plugin.
 
 ## Roadmap
 

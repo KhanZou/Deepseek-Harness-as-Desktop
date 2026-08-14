@@ -67,8 +67,12 @@ Deepseek-Harness-as-Desktop/
    `dsh-desktop-window\shell\DshDesktop.exe` (or build it from `Program.cs` — see
    below). It starts the backend if needed and opens the DSH UI in a native window.
 
-3. **Install the plugins** into the web profile (point the paths at where you
-   put the folders):
+3. **Install the plugins** into the web profile. All six plugins ship in
+   this repository ? each one is a folder under the repo root
+   (`dsh-desktop-window/`, `dsh-desktop-settings/`, `dsh-desktop-framework/`,
+   `dsh-skin-gallery/`, `dsh-git-graph/`, `dsh-live-stats/`). Point each
+   `add` at its folder (copy the folder anywhere, or use the paths inside
+   this repo):
    ```powershell
    cd /d "D:\deepseek harness"
    corepack pnpm dsh plugin --profile web add D:\dsh-desktop-window
@@ -80,7 +84,7 @@ Deepseek-Harness-as-Desktop/
    ```
    Restart the desktop app. Then:
    - **Settings → Desktop** — close behavior, auto-start, notifications.
-   - **Settings → Skin Center** — pick one skin (card grid); the UI refreshes.
+   - **Settings → Skin Center** — pick a skin from modern preview cards (mini app-window mockups painted with the real theme); the UI refreshes.
    - Session header **◧ ◨ ▤** buttons — collapse/expand the right panel and the bottom terminal.
    - Conversation tabs — **Chat / Trajectory / Git Graph**.
    - After each answer, a **live token stats** line appears under the turn.

@@ -3,7 +3,8 @@
 
 # dsh-panels-framework
 
-The **panels framework** is the visual counterpart of `dsh-settings-framework`:
+The **panels framework** is the visual counterpart of the settings framework
+(both ship in `dsh-desktop-framework`):
 a generic way for any DSH client plugin to add tabs to a right-side column and
 a bottom bar, with one-click collapse/expand, drag-to-resize and persisted
 state.
@@ -28,8 +29,8 @@ returns the tab content.
 
 ## Persistence
 
-Open state, active tab and sizes are persisted through the
-`dsh-settings-framework` backend (keys `panelRightOpen`, `panelRightTab`,
+Open state, active tab and sizes are persisted through the settings
+framework backend inside `dsh-desktop-framework` (keys `panelRightOpen`, `panelRightTab`,
 `panelRightWidth`, `panelBottomOpen`, `panelBottomTab`,
 `panelBottomHeight`). Without the settings framework installed the panels
 still work but keep their state in memory for the session.
@@ -80,7 +81,6 @@ drive the state programmatically via `toggle(side)`.
 ## Notes
 
 - The framework itself only renders the shells — the built-in Files/Changes/
-  Terminal tabs come from `dsh-right-panel`, which is a consumer of this
-  framework.
+  Terminal tabs also ship in the same `dsh-desktop-framework` package.
 - Panels render inside the layout's `shell.overlay` layer, so they float above
   the columns without affecting layout.

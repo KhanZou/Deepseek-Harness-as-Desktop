@@ -7,7 +7,7 @@
 - 双击 `D:\dsh-desktop-window\shell\DshDesktop.exe`（或桌面快捷方式）。
 - 关闭按钮行为、开机自启、会话通知：在 DSH Web 界面的 **设置 → 桌面客户端** 中配置（界面文案跟随 DSH 语言切换 zh/en）。
 - 皮肤切换：**设置 → 皮肤中心**（`dsh-skin-gallery` 插件）。
-- 右侧面板 / 底部终端：会话头部 **◧ ◨ ▤** 按钮一键折叠展开（`dsh-panels-framework` + `dsh-right-panel` 插件）。
+- 右侧面板 / 底部终端：会话头部 **◧ ◨ ▤** 按钮一键折叠展开（`dsh-desktop-framework` 插件）。
 - 托盘右键 → 打开 / 退出（退出会停止本程序启动的服务）。
 
 ## 本地 API（Web 插件调用，CORS 开放，127.0.0.1:3980）
