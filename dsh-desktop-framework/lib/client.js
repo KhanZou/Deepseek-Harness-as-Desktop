@@ -386,10 +386,18 @@ function applyPanels(ctx) {
 				var sidebar = kids[0] ? kids[0].getBoundingClientRect().width : 0;
 				var details = kids[2] ? kids[2].getBoundingClientRect().width : 0;
 				var rightW = state.right.open ? state.right.width : 0;
+				var bottomH = state.bottom.open ? state.bottom.height : 0;
 				var doc = document.documentElement;
 				doc.style.setProperty("--dsh-metrics-sidebar", sidebar + "px");
 				doc.style.setProperty("--dsh-metrics-details", details + "px");
 				doc.style.setProperty("--dsh-metrics-right", (rightW + details) + "px");
+				// Adapt the main (center) column: reserve space for open panels so
+				// they never overlay the conversation (plugin-only, no DSH changes).
+				var center = kids[1];
+				if (center) {
+					center.style.paddingRight = rightW + "px";
+					center.style.paddingBottom = bottomH + "px";
+				}
 			} catch (e) { }
 		}
 		function startMetrics(tries) {
@@ -649,12 +657,7 @@ function applyPanels(ctx) {
 			if (!st.right.tabs.length) return null;
 			var rs = st.right;
 			var active = byId(rs.tabs, rs.tab);
-			if (!rs.open) {
-				var rlabel = typeof active.label === "function" ? active.label() : active.label;
-				return h("div", { className: "dsh-panel-rail-right", title: rlabel, onClick: function () { toggle("right"); } },
-					dshIcon("chevron-left", 14),
-					h("span", { style: { writingMode: "vertical-rl" } }, rlabel));
-			}
+			if (!rs.open) return null;
 			return h("div", { className: "dsh-panel-right", style: { width: rs.width + "px" } },
 				h("div", { className: "dsh-panel-resize-left", onMouseDown: startResize("right") }),
 				h("div", { className: "dsh-panel-header" },
@@ -668,12 +671,7 @@ function applyPanels(ctx) {
 			if (!st.bottom.tabs.length) return null;
 			var bs = st.bottom;
 			var active = byId(bs.tabs, bs.tab);
-			if (!bs.open) {
-				var blabel = typeof active.label === "function" ? active.label() : active.label;
-				return h("div", { className: "dsh-panel-rail-bottom", title: blabel, onClick: function () { toggle("bottom"); } },
-					dshIcon("chevron-up", 14),
-					h("span", {}, blabel));
-			}
+			if (!bs.open) return null;
 			return h("div", { className: "dsh-panel-bottom", style: { height: bs.height + "px" } },
 				h("div", { className: "dsh-panel-resize-top", onMouseDown: startResize("bottom") }),
 				h("div", { className: "dsh-panel-header" },
@@ -739,6 +737,14 @@ function applyPanels(ctx) {
 				subscribe: subscribe,
 				notify: emit,
 			};
+			// Keyboard shortcuts to reopen hidden panels anywhere (incl. no session):
+			// Ctrl+Alt+Right = right panel, Ctrl+Alt+Down = bottom panel.
+			document.addEventListener("keydown", function (e) {
+				if (!e.ctrlKey || !e.altKey) return;
+				var k = e.key ? e.key.toLowerCase() : "";
+				if (k === "arrowright") { e.preventDefault(); toggle("right"); }
+				else if (k === "arrowdown") { e.preventDefault(); toggle("bottom"); }
+			});
 			startMetrics();
 
 			whenSettings(function (sf) {
@@ -1779,20 +1785,57 @@ function applyDesktopExtras(ctx) {
 
     // ---- link-ification ---------------------------------------------------
     var LINK_RE = /(https?:\/\/[^\s<>"'()]+|(?:[A-Za-z]:[\\/][^\s<>"']+))/g;
+    function isLocalRef(s) {
+        return /^[A-Za-z]:[\\/]/.test(s) || /^file:\/\//i.test(s);
+    }
+    function localPath(s) {
+        s = String(s || "");
+        if (/^file:\/\//i.test(s)) {
+            s = s.replace(/^file:\/\//i, "");
+            try { s = decodeURIComponent(s); } catch (e) { }
+            s = s.replace(/\//g, "\\");
+        }
+        return s;
+    }
     function isLinkableParent(node) {
         if (!node) return false;
         var tag = node.tagName ? node.tagName.toLowerCase() : "";
-        if (tag === "a" || tag === "pre" || tag === "code" || tag === "button" || tag === "textarea" || tag === "input" || tag === "select") return false;
-        if (node.closest && node.closest(".dsh-panel-right, .dsh-panel-bottom, .dsh-open-menu, .dsh-panel-rail-right, .dsh-panel-rail-bottom, pre, code, a")) return false;
+        if (tag === "button" || tag === "textarea" || tag === "input" || tag === "select" || tag === "iframe" || tag === "svg") return false;
+        if (node.closest && node.closest(".dsh-panel-right, .dsh-panel-bottom, .dsh-open-menu, .dsh-panel-plus-menu, a.dsh-link, .dsh-md-body")) return false;
         return true;
     }
     function handleClick(e) {
-        var a = e.target && e.target.closest ? e.target.closest("a.dsh-link") : null;
-        if (!a) return;
-        e.preventDefault();
-        e.stopPropagation();
-        var res = { path: a.getAttribute("data-path") || "", url: a.getAttribute("data-url") || "", name: a.getAttribute("data-name") || "" };
-        openResource(res, e.clientX, e.clientY);
+        var tgt = e.target;
+        var a = tgt && tgt.closest ? tgt.closest("a.dsh-link") : null;
+        if (a) {
+            e.preventDefault();
+            e.stopPropagation();
+            openResource({ path: a.getAttribute("data-path") || "", url: a.getAttribute("data-url") || "", name: a.getAttribute("data-name") || "" }, e.clientX, e.clientY);
+            return;
+        }
+        // intercept app-rendered <a> whose href is a local file path
+        var aa = tgt && tgt.closest ? tgt.closest("a[href]") : null;
+        if (aa) {
+            var href = aa.getAttribute("href") || aa.href || "";
+            if (isLocalRef(href)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var p = localPath(href);
+                openResource({ path: p, name: p }, e.clientX, e.clientY);
+            }
+            return;
+        }
+        // intercept <img> whose src is a local file path
+        var im = tgt && tgt.closest ? tgt.closest("img[src]") : null;
+        if (im) {
+            var src = im.getAttribute("src") || im.src || "";
+            if (isLocalRef(src)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var pp = localPath(src);
+                openResource({ path: pp, name: pp }, e.clientX, e.clientY);
+            }
+        }
     }
     function handleCtx(e) {
         var a = e.target && e.target.closest ? e.target.closest("a.dsh-link") : null;
@@ -1818,6 +1861,8 @@ function applyDesktopExtras(ctx) {
         while ((m = LINK_RE.exec(text)) !== null) {
             if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
             var token = m[0];
+            token = token.replace(/[\u3002\uff0c\u3001\uff1b\uff1a,;:!?\u2026]+$/, "");
+            if (!token) continue;
             var isUrl = /^https?:/i.test(token);
             var a = document.createElement("a");
             a.className = "dsh-link";
