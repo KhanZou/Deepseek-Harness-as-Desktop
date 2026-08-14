@@ -180,8 +180,15 @@ from the Files tab or from conversation links render in closable tabs:
 | Image | image viewer with zoom (wheel / +/- buttons) |
 | Video | HTML5 player (seeking via byte-range) |
 | PDF | built-in Chromium PDF viewer |
+| HTML | rendered web page in an iframe (relative css/js/img served by the desktop client) |
 | Web | iframe |
-| 3D (STL/OBJ) | WebGL viewer ? drag to rotate, wheel to zoom |
+| 3D (STL/OBJ) | WebGL viewer — drag to rotate, wheel to zoom |
+
+Web pages come in three forms and all render in an iframe: local `.html` files
+(served by `DshDesktop.exe` via `/serve/` so relative assets resolve next to
+the file), pages on a local port (`http://127.0.0.1:<port>`), and public
+internet URLs. HTML files default to opening in the desktop viewer; change it
+per type in the **Open files** settings tab.
 
 Left-click a conversation link to pick *Open in desktop / Open with system
 default / Copy link*; right-click shows the same actions as a context menu. The

@@ -1265,7 +1265,7 @@ function applyDesktopExtras(ctx) {
             nav: "文件打开", hint: "选择每类文件优先的打开方式",
             ask: "每次询问", desktop: "桌面端打开", system: "系统默认应用", copy: "复制链接",
             image: "图片", video: "视频", pdf: "PDF", markdown: "Markdown", code: "代码",
-            text: "文本", model3d: "3D 模型", web: "网页链接", other: "其他文件",
+            text: "文本", html: "HTML 网页", model3d: "3D 模型", web: "网页链接", other: "其他文件",
             chooseOpen: "选择打开方式", openSystem: "系统默认应用打开", openDesktop: "在桌面端打开", copyOk: "已复制",
             loading: "加载中…", failed: "加载失败", unsupported: "不支持的查看类型",
             reset: "复位",
@@ -1274,7 +1274,7 @@ function applyDesktopExtras(ctx) {
             nav: "Open files", hint: "Choose the preferred open mode per file type",
             ask: "Ask each time", desktop: "Open in desktop", system: "System default app", copy: "Copy link",
             image: "Image", video: "Video", pdf: "PDF", markdown: "Markdown", code: "Code",
-            text: "Text", model3d: "3D Model", web: "Web link", other: "Other files",
+            text: "Text", html: "HTML page", model3d: "3D Model", web: "Web link", other: "Other files",
             chooseOpen: "Choose how to open", openSystem: "Open with system default", openDesktop: "Open in desktop", copyOk: "Copied",
             loading: "Loading…", failed: "Failed to load", unsupported: "Unsupported viewer type",
             reset: "Reset",
@@ -1291,7 +1291,8 @@ function applyDesktopExtras(ctx) {
         video: ["mp4", "webm", "mov", "mkv", "avi", "m4v", "ogv"],
         pdf: ["pdf"],
         markdown: ["md", "markdown", "mdown"],
-        code: ["js", "ts", "tsx", "jsx", "mjs", "cjs", "py", "java", "c", "h", "cpp", "hpp", "cc", "cs", "go", "rs", "rb", "php", "swift", "kt", "sql", "html", "htm", "css", "scss", "less", "json", "yaml", "yml", "toml", "xml", "sh", "ps1", "bat", "cmd", "vue", "svelte", "astro", "dockerfile", "makefile", "gradle"],
+        html: ["html", "htm"],
+        code: ["js", "ts", "tsx", "jsx", "mjs", "cjs", "py", "java", "c", "h", "cpp", "hpp", "cc", "cs", "go", "rs", "rb", "php", "swift", "kt", "sql", "css", "scss", "less", "json", "yaml", "yml", "toml", "xml", "sh", "ps1", "bat", "cmd", "vue", "svelte", "astro", "dockerfile", "makefile", "gradle"],
         text: ["txt", "log", "ini", "cfg", "conf", "csv", "tsv", "env", "gitignore", "editorconfig", "license", "readme"],
         model3d: ["stl", "obj", "glb", "gltf", "ply", "off"],
     };
@@ -1407,7 +1408,15 @@ function applyDesktopExtras(ctx) {
         var label = url.length > 22 ? url.slice(0, 22) + "…" : url;
         var keyRes = { url: url, name: url };
         addViewerTab(label, function () { return h(ViewerTab, { key: "v" + viewerSeq, kind: "web", res: keyRes }); });
-    }    // ---- markdown renderer (compact, GitHub-ish) ---------------------------
+    }    // Local web-page URL for an HTML file: /serve/<url-encoded windows path>.
+    // Segments are encoded individually so relative assets resolve next to the
+    // file and the exe serves them from the same URL space.
+    function serveUrl(path) {
+        var win = String(path || "").replace(/\\/g, "/");
+        var parts = win.split("/").map(function (seg) { return encodeURIComponent(seg); });
+        return API + "/serve/" + parts.join("/");
+    }
+    // ---- markdown renderer (compact, GitHub-ish) ---------------------------
     function escapeHtml(s) {
         return String(s == null ? "" : s)
             .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -1493,6 +1502,12 @@ function applyDesktopExtras(ctx) {
                 setState({ loading: false, error: "", text: "", dataUrl: "", objectUrl: "", src: res.url });
                 return;
             }
+            if (kind === "html") {
+                // Render local HTML files as real web pages (via the exe /serve/
+                // route so relative css/js/img assets resolve correctly).
+                setState({ loading: false, error: "", text: "", dataUrl: "", objectUrl: "", src: serveUrl(res.path) });
+                return;
+            }
             if (!res.path) { setState({ loading: false, error: "no path", text: "", dataUrl: "", objectUrl: "", src: "" }); return; }
             if (kind === "video" || kind === "pdf" || kind === "model3d") {
                 fetch(API + "/api/fs/raw?path=" + encodeURIComponent(res.path))
@@ -1542,9 +1557,9 @@ function applyDesktopExtras(ctx) {
             return h("div", { className: "dsh-viewer dsh-viewer-media" },
                 state.src ? h("iframe", { src: state.src, className: "dsh-viewer-frame", title: res.name || "pdf" }) : null);
         }
-        if (kind === "web") {
+        if (kind === "html" || kind === "web") {
             return h("div", { className: "dsh-viewer dsh-viewer-media" },
-                h("iframe", { src: res.url, className: "dsh-viewer-frame", title: res.name || "web" }));
+                h("iframe", { src: kind === "html" ? state.src : res.url, className: "dsh-viewer-frame", title: res.name || (kind === "html" ? "html" : "web") }));
         }
         if (kind === "model3d") return h(ModelViewer, { res: res });
         return h("div", { className: "dsh-viewer-status" }, t("unsupported"));
@@ -1770,7 +1785,7 @@ function applyDesktopExtras(ctx) {
     function registerSettings() {
         var sf = window.__DSH_SETTINGS__;
         if (!sf) return;
-        var kinds = ["image", "video", "pdf", "markdown", "code", "text", "model3d", "web", "other"];
+        var kinds = ["image", "video", "pdf", "markdown", "html", "code", "text", "model3d", "web", "other"];
         var opts = [
             { value: "ask", label: t("ask") },
             { value: "desktop", label: t("desktop") },
@@ -1784,7 +1799,9 @@ function applyDesktopExtras(ctx) {
                 type: "select",
                 label: t(k),
                 hint: t("hint"),
-                defaultValue: "ask",
+                // HTML files render as real web pages in the right panel by
+                // default; every other type still asks first.
+                defaultValue: k === "html" ? "desktop" : "ask",
                 options: opts,
             });
         });

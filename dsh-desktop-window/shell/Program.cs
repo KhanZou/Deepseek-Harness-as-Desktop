@@ -827,6 +827,37 @@ namespace DshDesktop
                         }
                     }
                 }
+                else if (method == "GET" && path.StartsWith("/serve/"))
+                {
+                    // Local web-page server: /serve/<url-encoded windows path>
+                    // The browser keeps the encoded path segments, so relative
+                    // assets (css/js/img) resolve next to the HTML file and are
+                    // served from the same URL space.
+                    string raw = path.Substring("/serve/".Length);
+                    string rp;
+                    try { rp = Uri.UnescapeDataString(raw); }
+                    catch { rp = raw; }
+                    rp = rp.Replace('/', Path.DirectorySeparatorChar);
+                    if (string.IsNullOrEmpty(rp) || !File.Exists(rp))
+                    {
+                        status = 404;
+                        response = "{\"error\":\"file not found\"}";
+                    }
+                    else
+                    {
+                        try
+                        {
+                            rawMime = MimeForPath(rp);
+                            rawBody = File.ReadAllBytes(rp);
+                            rawAcceptRanges = "bytes";
+                        }
+                        catch (Exception ex)
+                        {
+                            status = 500;
+                            response = "{\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}";
+                        }
+                    }
+                }
                 else if (method == "POST" && path == "/api/fs/open")
                 {
                     response = OpenPath(body);

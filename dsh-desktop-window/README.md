@@ -21,6 +21,7 @@
 | `GET /api/settings` / `POST /api/settings` `{key,value}` | 通用键值设置（设置框架后端，合并视图） |
 | `GET /api/fs/list?dir=` | 列目录（文件/文件夹 + 大小） |
 | `GET /api/fs/read?path=` | 读取文本文件（图片返回 data URL 预览） |
+| `GET /serve/<url-encoded path>` | 本地网页服务：以相对路径解析方式提供 HTML 及其 css/js/图片资源 |
 | `GET /api/git/branches?dir=` | 分支列表 + 当前分支 |
 | `GET /api/git/log?dir=&branch=&limit=` | 提交历史（hash/父提交/作者/日期/主题） |
 | `GET /api/git/status?dir=` | Porcelain 状态（分支 + 变更） |

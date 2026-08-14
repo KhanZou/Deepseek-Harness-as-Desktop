@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.0] - 2026-08-14
+
+### Added
+- **Rendered HTML pages in the right panel**: `.html`/`.htm` files are no
+  longer shown as plain text — they open as real web pages in an iframe.
+  `DshDesktop.exe` gains a local web server route (`GET /serve/<url-encoded
+  path>`) that serves the HTML file and resolves its relative `css/js/img`
+  assets next to the file, so local pages render correctly.
+- **Three web forms supported**, all rendered in the iframe viewer:
+  1. local `.html` files (via `/serve/`),
+  2. pages on a local port (`http://127.0.0.1:<port>`),
+  3. public internet URLs.
+- **`HTML 网页` open-mode setting**: the Open-files settings tab gains an
+  "HTML page" type; it defaults to opening in the desktop viewer (others still
+  default to ask-first).
+
 ## [0.6.0] - 2026-08-14
 
 ### Added
