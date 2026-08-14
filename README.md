@@ -151,7 +151,9 @@ convention.
 ## Panels (right column + bottom terminal)
 
 `dsh-desktop-framework` renders the panel shells and registers the
-Files/Changes/Terminal tabs and the header toggle buttons. Use the **◧ / ◨** and **▤** buttons in
+Files/Changes/Terminal tabs and the header toggle buttons. The right panel
+shares the left sidebar's fill (`--dsw-specific-sidebar-fill`), and panel
+buttons/tabs reuse the app's native button tokens, so they follow the theme. Use the **◧ / ◨** and **▤** buttons in
 the session header (next to the mode selector) to one-click collapse/expand
 the right panel and the bottom terminal. Collapsed panels become slim rails on
 the right/bottom edges — click them to expand again. Drag the panel edges to
@@ -178,6 +180,22 @@ default / Copy link*; right-click shows the same actions as a context menu. The
 **Open files** settings tab controls the default per type (`ask` / `desktop` /
 `system`). Opening with the system default app or browser is handled by the
 desktop client (`DshDesktop.exe`) through its local API.
+
+## CLI (testing)
+
+`dsh-desktop-framework` ships a dependency-free Node CLI for exercising the
+plugin and the desktop client API without the UI:
+
+```powershell
+cd D:\dsh-desktop\dsh-desktop-framework
+node cli.js check                 # health-check web (3080) + desktop api (3980)
+node cli.js raw <path> [range]    # fetch /api/fs/raw (byte-range aware)
+node cli.js open <path>           # open with the system default app
+node cli.js open-url <url>        # open in the default browser
+node cli.js settings [k [v]]      # read/update the desktop settings store
+node cli.js type <path>           # viewer kind for a file name
+node cli.js samples [dir]         # write sample md/stl/pdf test files
+```
 
 ## Build the shell from source
 

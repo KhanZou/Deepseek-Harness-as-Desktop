@@ -140,7 +140,7 @@ Deepseek-Harness-as-Desktop/
 
 ## 面板（右侧栏 + 底部终端）
 
-`dsh-desktop-framework` 渲染面板壳并注册 Files/Changes/Terminal tab 与头部开关。
+`dsh-desktop-framework` 渲染面板壳并注册 Files/Changes/Terminal tab 与头部开关。右侧面板与左侧边栏共用同一填充（`--dsw-specific-sidebar-fill`），面板按钮/tab 复用应用原生按钮 token，跟随主题。
 会话头部（模式选择旁）的 **◧ / ◨** 与 **▤** 按钮可一键折叠/展开右侧面板与
 底部终端；折叠后变成右侧/底部的细长把手，点击即可展开。拖拽面板边缘可调整
 大小；宽度/高度与开关状态都会持久化。其他插件也可注册自己的面板 tab
@@ -165,6 +165,22 @@ Deepseek-Harness-as-Desktop/
 提供相同操作。「文件打开」设置页可分别设置每类文件的默认打开方式
 （`每次询问` / `桌面端打开` / `系统默认应用`）。系统默认应用/浏览器打开由
 桌面客户端（`DshDesktop.exe`）的本地 API 完成。
+
+## CLI（测试用）
+
+`dsh-desktop-framework` 附带一个无依赖的 Node CLI，方便在不开 UI 的情况下
+测试插件与桌面客户端 API：
+
+```powershell
+cd D:\dsh-desktop\dsh-desktop-framework
+node cli.js check                 # 健康检查 web(3080) + 桌面 api(3980)
+node cli.js raw <path> [range]    # 拉取 /api/fs/raw（支持 byte-range）
+node cli.js open <path>           # 用系统默认应用打开
+node cli.js open-url <url>        # 用默认浏览器打开
+node cli.js settings [k [v]]      # 读写桌面设置存储
+node cli.js type <path>           # 打印文件的查看器类型
+node cli.js samples [dir]         # 生成 md/stl/pdf 示例文件
+```
 
 ## 从源码编译壳
 
