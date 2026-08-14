@@ -3,6 +3,13 @@
 ## [0.8.1] - 2026-08-14
 
 ### Fixed
+- **Bottom panel resize direction** (`dsh-desktop-framework`): dragging the top
+  edge up now makes the panel taller (dragging down makes it shorter). The
+  delta sign for the bottom panel was inverted.
+- **Tray "Exit" now stops the background service**: previously the exe only
+
+
+### Fixed
 - **Tray "Exit" now stops the background service**: previously the exe only
   killed the backend when it had started it itself (tracking the `cmd.exe`
   wrapper PID), so a service started elsewhere survived tray-exit. On exit the

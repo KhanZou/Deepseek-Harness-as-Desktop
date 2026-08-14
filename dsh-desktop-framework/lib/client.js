@@ -687,7 +687,7 @@ function applyPanels(ctx) {
 				var startPos = side === "right" ? e.clientX : e.clientY;
 				var startVal = side === "right" ? state.right.width : state.bottom.height;
 				function move(ev) {
-					var delta = side === "right" ? (startPos - ev.clientX) : (ev.clientY - startPos);
+					var delta = side === "right" ? (startPos - ev.clientX) : (startPos - ev.clientY);
 					setSize(side, startVal + delta);
 				}
 				function up() {
