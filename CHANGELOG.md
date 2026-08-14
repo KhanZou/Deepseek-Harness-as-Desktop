@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0 - themed non-floating panels, multi-type viewers, conversation links
+
+- **Panels**: right/bottom panels now follow the app theme (light/dark) instead
+  of a floating dark card; the bottom panel sits inside the middle column
+  (between the left sidebar and the right panel), sharing the middle area with
+  the conversation.
+- **Right panel** is a multi-tab workspace with closable viewer tabs and
+  adjustable width: Markdown (GitHub-style), code/text, image (zoom), video
+  (byte-range seeking), PDF, web iframe, and a WebGL 3D viewer (STL/OBJ with
+  drag-rotate / wheel-zoom).
+- **Conversation links**: URLs and Windows file paths in chat output become
+  clickable links; left-click chooses how to open, right-click shows
+  *Open in desktop / Open with system default / Copy link*.
+- **Open preferences**: new **????** settings tab picks per file type
+  between `ask` / `desktop` / `system`.
+- **DshDesktop.exe** adds `GET /api/fs/raw` (byte-range streaming for
+  video/PDF/3D), `POST /api/fs/open` and `POST /api/fs/open-url`.
+
+
 ## 0.2.0 - merge frameworks into dsh-desktop-framework
 
 - **Fix:** `dsh-panels-framework` client crashed with `RightPanelShell is not defined` — the `RightPanelShell` declaration, its `usePanelState` effect subscription, and the `TabBar` component were lost in an edit, leaving the panel shell body inside `usePanelState`. Reconstructed all three.

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
@@ -624,6 +624,10 @@ namespace DshDesktop
                 string response = null;
                 string contentType = "application/json; charset=utf-8";
                 int status = 200;
+                byte[] rawBody = null;
+                string rawMime = null;
+                string rawRangeHeader = null;
+                string rawAcceptRanges = "none";
 
                 if (method == "OPTIONS")
                 {
@@ -775,16 +779,74 @@ namespace DshDesktop
                 {
                     response = ShellExec(body);
                 }
+                else if (method == "GET" && path == "/api/fs/raw")
+                {
+                    string rp = Q(query, "path", "");
+                    if (string.IsNullOrEmpty(rp) || !File.Exists(rp))
+                    {
+                        status = 404;
+                        response = "{\"error\":\"file not found\"}";
+                    }
+                    else
+                    {
+                        try
+                        {
+                            FileInfo fi = new FileInfo(rp);
+                            long fsize = fi.Length;
+                            rawMime = MimeForPath(rp);
+                            byte[] all = File.ReadAllBytes(rp);
+                            string rangeHdr = FindHeader(head.ToString(), "Range");
+                            if (!string.IsNullOrEmpty(rangeHdr))
+                            {
+                                long start = 0, end = fsize - 1;
+                                string spec = rangeHdr.Replace("bytes=", "").Trim();
+                                string[] rr = spec.Split('-');
+                                if (rr.Length >= 1) long.TryParse(rr[0].Trim(), out start);
+                                if (rr.Length >= 2 && !string.IsNullOrEmpty(rr[1].Trim())) long.TryParse(rr[1].Trim(), out end);
+                                if (end >= fsize) end = fsize - 1;
+                                if (start < 0) start = 0;
+                                if (start > end) end = start;
+                                int len = (int)(end - start + 1);
+                                byte[] part = new byte[len];
+                                Array.Copy(all, start, part, 0, len);
+                                rawBody = part;
+                                rawRangeHeader = "bytes " + start + "-" + end + "/" + fsize;
+                                rawAcceptRanges = "bytes";
+                                status = 206;
+                            }
+                            else
+                            {
+                                rawBody = all;
+                                rawAcceptRanges = "bytes";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            status = 500;
+                            response = "{\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}";
+                        }
+                    }
+                }
+                else if (method == "POST" && path == "/api/fs/open")
+                {
+                    response = OpenPath(body);
+                }
+                else if (method == "POST" && path == "/api/fs/open-url")
+                {
+                    response = OpenUrl(body);
+                }
                 else
                 {
                     status = 404;
                     response = "{\"error\":\"not found\"}";
                 }
 
-                byte[] respBytes = Encoding.UTF8.GetBytes(response == null ? "" : response);
+                byte[] respBytes = rawBody != null ? rawBody : Encoding.UTF8.GetBytes(response == null ? "" : response);
                 StringBuilder sb = new StringBuilder();
                 sb.Append("HTTP/1.1 ").Append(status).Append(" OK\r\n");
-                sb.Append("Content-Type: ").Append(contentType).Append("\r\n");
+                sb.Append("Content-Type: ").Append(rawMime != null ? rawMime : contentType).Append("\r\n");
+                if (rawRangeHeader != null) sb.Append("Content-Range: ").Append(rawRangeHeader).Append("\r\n");
+                if (rawBody != null) sb.Append("Accept-Ranges: ").Append(rawAcceptRanges).Append("\r\n");
                 sb.Append("Content-Length: ").Append(respBytes.Length).Append("\r\n");
                 sb.Append("Access-Control-Allow-Origin: *\r\n");
                 sb.Append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
@@ -947,6 +1009,126 @@ namespace DshDesktop
                 wrap["ok"] = true;
                 wrap["dir"] = dir;
                 wrap["items"] = items;
+            }
+            catch (Exception ex)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = ex.Message;
+            }
+            return ser.Serialize(wrap);
+        }
+
+        private static string FindHeader(string headerText, string name)
+        {
+            try
+            {
+                foreach (string ln in headerText.Split('\n'))
+                {
+                    string t = ln.Trim();
+                    if (t.StartsWith(name + ":", StringComparison.OrdinalIgnoreCase))
+                        return t.Substring(name.Length + 1).Trim();
+                }
+            }
+            catch { }
+            return "";
+        }
+
+        private static string MimeForPath(string path)
+        {
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            switch (ext)
+            {
+                case ".mp4": return "video/mp4";
+                case ".webm": return "video/webm";
+                case ".mov": return "video/quicktime";
+                case ".mkv": return "video/x-matroska";
+                case ".avi": return "video/x-msvideo";
+                case ".m4v": return "video/mp4";
+                case ".ogv": return "video/ogg";
+                case ".pdf": return "application/pdf";
+                case ".stl": return "model/stl";
+                case ".obj": return "model/obj";
+                case ".glb": return "model/gltf-binary";
+                case ".gltf": return "model/gltf+json";
+                case ".ply": return "application/octet-stream";
+                case ".off": return "application/octet-stream";
+                case ".png": return "image/png";
+                case ".jpg": case ".jpeg": return "image/jpeg";
+                case ".gif": return "image/gif";
+                case ".webp": return "image/webp";
+                case ".svg": return "image/svg+xml";
+                case ".bmp": return "image/bmp";
+                case ".ico": return "image/x-icon";
+                case ".html": case ".htm": return "text/html; charset=utf-8";
+                case ".css": return "text/css; charset=utf-8";
+                case ".js": return "text/javascript; charset=utf-8";
+                case ".json": return "application/json; charset=utf-8";
+                case ".md": return "text/markdown; charset=utf-8";
+                case ".txt": return "text/plain; charset=utf-8";
+                case ".xml": return "text/xml; charset=utf-8";
+                case ".csv": return "text/csv; charset=utf-8";
+                default: return "application/octet-stream";
+            }
+        }
+
+        private string OpenPath(byte[] body)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            try
+            {
+                string p = "";
+                if (body != null)
+                {
+                    string bodyText = Encoding.UTF8.GetString(body);
+                    Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
+                    if (map != null) { object v; if (map.TryGetValue("path", out v)) p = Convert.ToString(v); }
+                }
+                if (string.IsNullOrEmpty(p) || (!File.Exists(p) && !Directory.Exists(p)))
+                {
+                    wrap["ok"] = false;
+                    wrap["error"] = "path not found";
+                }
+                else
+                {
+                    if (Directory.Exists(p))
+                        Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true, Arguments = "\"" + p + "\"" });
+                    else
+                        Process.Start(new ProcessStartInfo(p) { UseShellExecute = true });
+                    wrap["ok"] = true;
+                    wrap["path"] = p;
+                }
+            }
+            catch (Exception ex)
+            {
+                wrap["ok"] = false;
+                wrap["error"] = ex.Message;
+            }
+            return ser.Serialize(wrap);
+        }
+
+        private string OpenUrl(byte[] body)
+        {
+            Dictionary<string, object> wrap = new Dictionary<string, object>();
+            try
+            {
+                string u = "";
+                if (body != null)
+                {
+                    string bodyText = Encoding.UTF8.GetString(body);
+                    Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
+                    if (map != null) { object v; if (map.TryGetValue("url", out v)) u = Convert.ToString(v); }
+                }
+                if (string.IsNullOrEmpty(u) || !(u.StartsWith("http://") || u.StartsWith("https://")))
+                {
+                    wrap["ok"] = false;
+                    wrap["error"] = "invalid url";
+                }
+                else
+                {
+                    Process.Start(new ProcessStartInfo(u) { UseShellExecute = true });
+                    wrap["ok"] = true;
+                    wrap["url"] = u;
+                }
             }
             catch (Exception ex)
             {

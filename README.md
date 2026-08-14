@@ -17,6 +17,9 @@
 - 📐 **Right/bottom panels framework** — part of `dsh-desktop-framework`: renders a right column and a bottom bar with tabs, one-click collapse/expand rails, drag-to-resize, and persisted state. Any plugin can register tabs (see [docs/panels-framework.md](docs/panels-framework.md)).
 - 📁 **Files & SCM panel** — a **Files** tab (file tree + text/image preview) and a **Changes** tab (git status with stage/unstage/discard) in the right panel.
 - 💻 **Mini terminal** — a **Terminal** tab in the bottom panel: run commands in the harness directory (`cd` supported), backed by the desktop client.
+- 🖼️ **Multi-type viewers** — the right panel is a multi-tab workspace: open Markdown (GitHub-style), code/text, images (zoom), videos (seeking), PDFs, web pages and 3D models (WebGL STL/OBJ) in closable tabs; drag the left edge to resize.
+- 🔗 **Conversation links** — URLs and file paths in chat output become clickable links: left-click to choose how to open, right-click for *Open in desktop / Open with system default / Copy link*.
+- ⚙️ **Per-type open preference** — an **Open files** settings tab chooses per file type whether to open in the desktop client, the system default app, or ask each time.
 - 🌿 **Git Graph view** — a fourth conversation view tab (beside *Chat* / *Trajectory*) with a branch selector, checkout, and a commit-history swimlane graph.
 - ⚡ **Live token stats** — a compact per-turn line under each completed answer showing TPS, LLM wall time, input/output tokens and cache-hit tokens (when the provider reports them).
 - 🔌 **Plugin-only architecture** — everything is distributed as DSH plugins (`dsh-plugin`).
@@ -154,6 +157,27 @@ the right panel and the bottom terminal. Collapsed panels become slim rails on
 the right/bottom edges — click them to expand again. Drag the panel edges to
 resize; widths/heights and open state persist. Other plugins can add their own
 tabs (see [docs/panels-framework.md](docs/panels-framework.md)).
+
+## Viewers & file opening
+
+The right panel is a multi-tab workspace (`dsh-desktop-framework`). Files opened
+from the Files tab or from conversation links render in closable tabs:
+
+| Type | Viewer |
+|---|---|
+| Markdown | GitHub-style rendered document |
+| Code / text | monospace with word wrap |
+| Image | image viewer with zoom (wheel / +/- buttons) |
+| Video | HTML5 player (seeking via byte-range) |
+| PDF | built-in Chromium PDF viewer |
+| Web | iframe |
+| 3D (STL/OBJ) | WebGL viewer ? drag to rotate, wheel to zoom |
+
+Left-click a conversation link to pick *Open in desktop / Open with system
+default / Copy link*; right-click shows the same actions as a context menu. The
+**Open files** settings tab controls the default per type (`ask` / `desktop` /
+`system`). Opening with the system default app or browser is handled by the
+desktop client (`DshDesktop.exe`) through its local API.
 
 ## Build the shell from source
 
