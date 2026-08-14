@@ -12,15 +12,17 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const API = 'http://127.0.0.1:3980'
+const API = process.env.DSH_DESKTOP_API || 'http://127.0.0.1:3980'
 const WEB = 'http://127.0.0.1:3080'
 
 function reqJson(url, options = {}, body = undefined) {
   return new Promise((resolve, reject) => {
     const u = new URL(url)
+    const headers = Object.assign({}, options.headers || {})
+    if (body !== undefined) headers['Content-Length'] = Buffer.byteLength(body)
     const r = http.request({
       hostname: u.hostname, port: u.port, path: u.pathname + u.search,
-      method: options.method || 'GET', headers: options.headers || {},
+      method: options.method || 'GET', headers,
     }, (res) => {
       const chunks = []
       res.on('data', (c) => chunks.push(c))
@@ -30,6 +32,7 @@ function reqJson(url, options = {}, body = undefined) {
       })
     })
     r.on('error', reject)
+    r.setTimeout(8000, () => { try { r.destroy(new Error('timeout')) } catch { } })
     if (body) r.write(body)
     r.end()
   })
@@ -103,6 +106,48 @@ function samples(dir) {
   console.log('samples written to', d)
 }
 
+
+async function notifyBasic(title, message) {
+  const r = await reqJson(API + '/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+    JSON.stringify({ title: title || 'DeepSeek Harness', message: message || 'Test notification' }))
+  console.log(r.status, r.text)
+}
+
+async function notifyTurn(preview) {
+  const r = await reqJson(API + '/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+    JSON.stringify({
+      kind: 'turn',
+      title: '任务完成 / Task completed',
+      message: preview || '回答预览：这是通过 CLI 发送的测试通知，包含预览与快捷回复输入框。',
+      sessionId: '',
+      turn: '0',
+      reason: 'completed',
+      tools: 'cli',
+      quickReply: true,
+      replyPlaceholder: '回复或布置下一个任务…',
+      replyLabel: '回复 / Reply',
+    }))
+  console.log(r.status, r.text)
+}
+
+async function notifyApproval(tool, reason) {
+  const r = await reqJson(API + '/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+    JSON.stringify({
+      kind: 'approval',
+      title: 'DeepSeek Harness 请求权限 / Permission requested',
+      message: '工具: ' + (tool || 'bash') + '\n原因: ' + (reason || 'escalate sandbox to workspace-write: 测试') + '\n参数: { "command": "..." }',
+      sessionId: '',
+      approvalId: 'cli-' + Date.now(),
+      rpcId: 'cli-rpc',
+      toolName: tool || 'bash',
+      approveLabel: '允许一次 / Allow once',
+      rejectLabel: '拒绝 / Reject',
+      tag: 'dsh-approval-cli-' + Date.now(),
+      group: 'DeepSeekHarness.Desktop',
+    }))
+  console.log(r.status, r.text)
+}
+
 const [cmd, a, b] = process.argv.slice(2)
 const run = {
   check: () => check(),
@@ -112,11 +157,14 @@ const run = {
   settings: () => settings(a, b),
   type: () => console.log(a ? kindOf(a) : 'usage: node cli.js type <path>'),
   samples: () => samples(a),
+  notify: () => notifyBasic(a, b),
+  'notify-turn': () => notifyTurn(a),
+  'notify-approval': () => notifyApproval(a, b),
 }
 if (!run[cmd]) {
   console.log('dsh-desktop-framework CLI')
   console.log('usage: node cli.js <command> [args]')
-  console.log('commands: check | raw <path> [range] | open <path> | open-url <url> | settings [k [v]] | type <path> | samples [dir]')
+  console.log('commands: check | raw <path> [range] | open <path> | open-url <url> | settings [k [v]] | type <path> | samples [dir] | notify [title] [msg] | notify-turn [preview] | notify-approval [tool] [reason]')
   process.exit(1)
 }
 Promise.resolve(run[cmd]()).catch((e) => { console.error('error:', e.message); process.exit(1) })

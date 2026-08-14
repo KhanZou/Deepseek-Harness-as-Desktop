@@ -15,6 +15,7 @@ using Microsoft.Win32;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System.Web.Script.Serialization;
+using System.Runtime.InteropServices;
 
 namespace DshDesktop
 {
@@ -24,6 +25,11 @@ namespace DshDesktop
         public bool autoStart = false;
         public bool notifyOnComplete = true;
         public bool trayHint = false;
+        public bool notifyPreview = true;
+        public bool quickReply = true;
+        public bool approvalNotify = true;
+        public int previewMaxChars = 300;
+        public int approvalTimeoutSec = 600;
         public string desiredSkin = "";
         public string activeSkin = "";
         public string serverWorkDir = "";
@@ -31,11 +37,119 @@ namespace DshDesktop
         public int apiPort = 3980;
     }
 
+    public class ToastPayload
+    {
+        public string kind = "basic";
+        public string title = "DeepSeek Harness";
+        public string message = "";
+        public string sessionId = "";
+        public string turn = "";
+        public string reason = "";
+        public string tools = "";
+        public string approvalId = "";
+        public string rpcId = "";
+        public string toolName = "";
+        public string args = "";
+        public string tag = "";
+        public string group = "DeepSeekHarness.Desktop";
+        public string approveLabel = "Allow once";
+        public string rejectLabel = "Reject";
+        public string replyLabel = "Reply";
+        public string replyPlaceholder = "Type a reply...";
+        public bool quickReply = false;
+    }
+
     static class Program
     {
         public static readonly string AppDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         public static readonly string BaseDir = Directory.GetParent(AppDir).FullName;
         public static readonly string ConfigPath = BaseDir + "\\config.json";
+        public static string PendingToastAction = null;
+        public const string ToastActivatorClsid = "B7A8E4F2-1C3D-4E5F-8A9B-0C1D2E3F4A5B";
+
+        public static void RunToastActivatorServer()
+        {
+            try
+            {
+                RegistrationServices rs = new RegistrationServices();
+                rs.RegisterTypeForComClients(typeof(NotificationActivator), RegistrationClassContext.LocalServer, RegistrationConnectionType.SingleUse);
+            }
+            catch { }
+            Application.Run();
+        }
+
+        public static void ForwardToastAction(string toastArg)
+        {
+            try
+            {
+                string json = Uri.UnescapeDataString(toastArg.Substring("toast=".Length));
+                ForwardToastJson(json);
+            }
+            catch { }
+        }
+
+        public static int CurrentApiPort()
+        {
+            try
+            {
+                if (File.Exists(ConfigPath))
+                {
+                    string json = File.ReadAllText(ConfigPath);
+                    JavaScriptSerializer ser = new JavaScriptSerializer();
+                    Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(json);
+                    if (map != null)
+                    {
+                        object v;
+                        if (map.TryGetValue("apiPort", out v))
+                        {
+                            int p;
+                            if (int.TryParse(Convert.ToString(v), out p) && p > 0 && p < 65536) return p;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return 3980;
+        }
+
+        public static void ForwardToastJson(string json)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(json)) return;
+                for (int i = 0; i < 10; i++)
+                {
+                    string r = PostJson("http://127.0.0.1:" + CurrentApiPort() + "/api/toast-action", json, 2000);
+                    if (r != "") return;
+                    Thread.Sleep(200);
+                }
+            }
+            catch { }
+        }
+
+        public static string PostJson(string url, string json, int timeoutMs)
+        {
+            try
+            {
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                req.Method = "POST";
+                req.ContentType = "application/json";
+                req.Timeout = timeoutMs;
+                byte[] data = Encoding.UTF8.GetBytes(json ?? "");
+                req.ContentLength = data.Length;
+                using (Stream s = req.GetRequestStream()) s.Write(data, 0, data.Length);
+                using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                using (StreamReader sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                    return sr.ReadToEnd();
+            }
+            catch { return ""; }
+        }
+
+        public static string EscapeJson(string s)
+        {
+            if (s == null) return "";
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
+        }
 
         [STAThread]
         static void Main(string[] args)
@@ -61,10 +175,28 @@ namespace DshDesktop
             }
             if (url == "http://127.0.0.1:3080" && port != 3080) url = "http://127.0.0.1:" + port;
 
+            bool toastActivated = false;
+            string toastArg = null;
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (string.Equals(args[i], "-ToastActivated", StringComparison.OrdinalIgnoreCase)) toastActivated = true;
+                else if (args[i] != null && args[i].StartsWith("toast=", StringComparison.OrdinalIgnoreCase)) toastArg = args[i];
+            }
+            if (toastActivated)
+            {
+                RunToastActivatorServer();
+                return;
+            }
+
             bool createdNew;
             using (Mutex mutex = new Mutex(true, "Local\\DshDesktopWindow", out createdNew))
             {
-                if (!createdNew) return;
+                if (!createdNew)
+                {
+                    if (toastArg != null) ForwardToastAction(toastArg);
+                    return;
+                }
+                PendingToastAction = toastArg;
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new MainForm(url, width, height, port, userData, serverWorkDir, serverLog, serverCmd));
@@ -130,6 +262,12 @@ namespace DshDesktop
             SyncAutoStart(cfg.autoStart);
             apiServer = new HttpServer(cfg.apiPort, this);
             apiServer.Start();
+            string pending = Program.PendingToastAction;
+            if (pending != null)
+            {
+                Program.PendingToastAction = null;
+                try { Program.ForwardToastAction(pending); } catch { }
+            }
         }
 
         private Icon LoadIcon()
@@ -208,6 +346,128 @@ namespace DshDesktop
             }
         }
 
+        private static string G(Dictionary<string, object> map, string key, string def)
+        {
+            if (map == null) return def;
+            object v;
+            if (map.TryGetValue(key, out v) && v != null) return Convert.ToString(v);
+            return def;
+        }
+
+        public void ShowToast(Dictionary<string, object> map)
+        {
+            try
+            {
+                string script = Program.AppDir + "\\toast.ps1";
+                string toastFile = Program.AppDir + "\\.toast.json";
+                if (!File.Exists(script)) { ShowBalloon(G(map, "title", "DeepSeek Harness"), G(map, "message", "")); return; }
+                ToastPayload p = new ToastPayload();
+                p.kind = G(map, "kind", "basic");
+                p.title = G(map, "title", "DeepSeek Harness");
+                p.message = G(map, "message", "");
+                p.sessionId = G(map, "sessionId", "");
+                p.turn = G(map, "turn", "");
+                p.reason = G(map, "reason", "");
+                p.tools = G(map, "tools", "");
+                p.approvalId = G(map, "approvalId", "");
+                p.rpcId = G(map, "rpcId", "");
+                p.toolName = G(map, "toolName", "");
+                p.args = G(map, "args", "");
+                p.tag = G(map, "tag", "");
+                p.group = G(map, "group", "DeepSeekHarness.Desktop");
+                p.approveLabel = G(map, "approveLabel", "Allow once");
+                p.rejectLabel = G(map, "rejectLabel", "Reject");
+                p.replyLabel = G(map, "replyLabel", "Reply");
+                p.replyPlaceholder = G(map, "replyPlaceholder", "Type a reply...");
+                bool qr = string.Equals(G(map, "quickReply", cfg.quickReply ? "true" : "false"), "true", StringComparison.OrdinalIgnoreCase);
+                p.quickReply = p.kind == "turn" && qr;
+                JavaScriptSerializer ser = new JavaScriptSerializer();
+                ser.MaxJsonLength = int.MaxValue;
+                File.WriteAllText(toastFile, ser.Serialize(p), new System.Text.UTF8Encoding(false));
+                string args = "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\"";
+                ProcessStartInfo psi = new ProcessStartInfo("powershell.exe", args);
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.WindowStyle = ProcessWindowStyle.Hidden;
+                Process proc = Process.Start(psi);
+                if (proc != null && proc.WaitForExit(8000) && proc.ExitCode == 0) return;
+            }
+            catch { }
+            ShowBalloon(G(map, "title", "DeepSeek Harness"), G(map, "message", ""));
+        }
+
+        public void DismissToast(string tag, string group)
+        {
+            try
+            {
+                string script = Program.AppDir + "\\toast.ps1";
+                if (!File.Exists(script) || string.IsNullOrEmpty(tag)) return;
+                string dismissFile = Program.AppDir + "\\.dismiss.json";
+                Dictionary<string, string> m = new Dictionary<string, string>();
+                m["tag"] = tag;
+                m["group"] = string.IsNullOrEmpty(group) ? "DeepSeekHarness.Desktop" : group;
+                JavaScriptSerializer ser = new JavaScriptSerializer();
+                File.WriteAllText(dismissFile, ser.Serialize(m), new System.Text.UTF8Encoding(false));
+                ProcessStartInfo psi = new ProcessStartInfo("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\" -dismiss");
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.WindowStyle = ProcessWindowStyle.Hidden;
+                Process proc = Process.Start(psi);
+                if (proc != null) proc.WaitForExit(5000);
+            }
+            catch { }
+        }
+
+        public void HandleToastAction(Dictionary<string, object> map)
+        {
+            try
+            {
+                if (map == null) return;
+                string action = G(map, "action", "");
+                string sessionId = G(map, "sessionId", "");
+                string text = G(map, "text", "");
+                string rpcId = G(map, "rpcId", "");
+                string approvalId = G(map, "approvalId", "");
+                if (action == "reply")
+                {
+                    text = (text ?? "").Trim();
+                    if (text.Length > 0) PostSessionPrompt(sessionId, text);
+                    BeginInvoke(new Action(ShowWindow));
+                }
+                else if (action == "approve" || action == "reject")
+                {
+                    PostApprovalRespond(rpcId, sessionId, approvalId, action == "approve" ? "allowed-once" : "rejected");
+                    BeginInvoke(new Action(ShowWindow));
+                }
+                else if (action == "open")
+                {
+                    BeginInvoke(new Action(ShowWindow));
+                }
+            }
+            catch { }
+        }
+
+        private void PostSessionPrompt(string sessionId, string text)
+        {
+            try
+            {
+                string rpcId = Guid.NewGuid().ToString();
+                string body = "{\"type\":\"client-request\",\"rpcId\":\"" + Program.EscapeJson(rpcId) + "\",\"method\":\"session.prompt\",\"payload\":{\"sessionId\":\"" + Program.EscapeJson(sessionId) + "\",\"mode\":\"queue\",\"content\":[{\"type\":\"text\",\"text\":\"" + Program.EscapeJson(text) + "\"}]}}";
+                Program.PostJson("http://127.0.0.1:" + port + "/api/session.prompt", body, 8000);
+            }
+            catch { }
+        }
+
+        private void PostApprovalRespond(string rpcId, string sessionId, string approvalId, string outcome)
+        {
+            try
+            {
+                string body = "{\"type\":\"client-response\",\"rpcId\":\"" + Program.EscapeJson(rpcId) + "\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"" + Program.EscapeJson(sessionId) + "\",\"approvalId\":\"" + Program.EscapeJson(approvalId) + "\",\"outcome\":\"" + outcome + "\"}}}";
+                Program.PostJson("http://127.0.0.1:" + port + "/api/respond", body, 8000);
+            }
+            catch { }
+        }
+
         private void ShowWindow()
         {
             Show();
@@ -245,6 +505,7 @@ namespace DshDesktop
         private static readonly string[] KnownKeys = new string[]
         {
             "closeBehavior", "autoStart", "notifyOnComplete", "trayHint",
+            "notifyPreview", "quickReply", "approvalNotify", "previewMaxChars", "approvalTimeoutSec",
             "desiredSkin", "activeSkin", "serverWorkDir", "apiPort",
         };
 
@@ -268,6 +529,11 @@ namespace DshDesktop
             view["autoStart"] = cfg.autoStart;
             view["notifyOnComplete"] = cfg.notifyOnComplete;
             view["trayHint"] = cfg.trayHint;
+            view["notifyPreview"] = cfg.notifyPreview;
+            view["quickReply"] = cfg.quickReply;
+            view["approvalNotify"] = cfg.approvalNotify;
+            view["previewMaxChars"] = cfg.previewMaxChars;
+            view["approvalTimeoutSec"] = cfg.approvalTimeoutSec;
             view["desiredSkin"] = cfg.desiredSkin;
             view["activeSkin"] = cfg.activeSkin;
             view["serverWorkDir"] = EffectiveWorkDir();
@@ -292,6 +558,11 @@ namespace DshDesktop
             else if (key == "desiredSkin") cfg.desiredSkin = value;
             else if (key == "activeSkin") cfg.activeSkin = value;
             else if (key == "trayHint") cfg.trayHint = (value == "true");
+            else if (key == "notifyPreview") cfg.notifyPreview = (value == "true");
+            else if (key == "quickReply") cfg.quickReply = (value == "true");
+            else if (key == "approvalNotify") cfg.approvalNotify = (value == "true");
+            else if (key == "previewMaxChars") { int n; if (int.TryParse(value, out n)) cfg.previewMaxChars = n; }
+            else if (key == "approvalTimeoutSec") { int n; if (int.TryParse(value, out n)) cfg.approvalTimeoutSec = n; }
             else if (key == "serverWorkDir") cfg.serverWorkDir = value;
             else cfg.settings[key] = value;
             ConfigStore.Save(cfg);
@@ -473,6 +744,11 @@ namespace DshDesktop
                         if (map.TryGetValue("closeBehavior", out v)) c.closeBehavior = Convert.ToString(v);
                         if (map.TryGetValue("autoStart", out v)) c.autoStart = Convert.ToBoolean(v);
                         if (map.TryGetValue("notifyOnComplete", out v)) c.notifyOnComplete = Convert.ToBoolean(v);
+                        if (map.TryGetValue("notifyPreview", out v)) c.notifyPreview = Convert.ToBoolean(v);
+                        if (map.TryGetValue("quickReply", out v)) c.quickReply = Convert.ToBoolean(v);
+                        if (map.TryGetValue("approvalNotify", out v)) c.approvalNotify = Convert.ToBoolean(v);
+                        if (map.TryGetValue("previewMaxChars", out v)) { int n; if (int.TryParse(Convert.ToString(v), out n)) c.previewMaxChars = n; }
+                        if (map.TryGetValue("approvalTimeoutSec", out v)) { int n; if (int.TryParse(Convert.ToString(v), out n)) c.approvalTimeoutSec = n; }
                         if (map.TryGetValue("desiredSkin", out v)) c.desiredSkin = Convert.ToString(v);
                         if (map.TryGetValue("activeSkin", out v)) c.activeSkin = Convert.ToString(v);
                         if (map.TryGetValue("trayHint", out v)) c.trayHint = Convert.ToBoolean(v);
@@ -678,15 +954,58 @@ namespace DshDesktop
                     {
                         string bodyText = Encoding.UTF8.GetString(body);
                         Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
-                        string title = "DeepSeek Harness";
-                        string message = "";
+                        if (map == null)
+                        {
+                            map = new Dictionary<string, object>();
+                            map["title"] = "DeepSeek Harness";
+                            map["message"] = "";
+                        }
+                        form.BeginInvoke(new Action<Dictionary<string, object>>(form.ShowToast), map);
+                        response = "{\"ok\":true}";
+                    }
+                    else
+                    {
+                        status = 400;
+                        response = "{\"error\":\"empty body\"}";
+                    }
+                }
+                else if (method == "POST" && path == "/api/toast-action")
+                {
+                    if (body != null)
+                    {
+                        string bodyText = Encoding.UTF8.GetString(body);
+                        Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
+                        if (map != null)
+                        {
+                            form.HandleToastAction(map);
+                            response = "{\"ok\":true}";
+                        }
+                        else
+                        {
+                            status = 400;
+                            response = "{\"error\":\"bad body\"}";
+                        }
+                    }
+                    else
+                    {
+                        status = 400;
+                        response = "{\"error\":\"empty body\"}";
+                    }
+                }
+                else if (method == "POST" && path == "/api/dismiss")
+                {
+                    if (body != null)
+                    {
+                        string bodyText = Encoding.UTF8.GetString(body);
+                        Dictionary<string, object> map = ser.Deserialize<Dictionary<string, object>>(bodyText);
+                        string tag = "", group = "DeepSeekHarness.Desktop";
                         if (map != null)
                         {
                             object v;
-                            if (map.TryGetValue("title", out v)) title = Convert.ToString(v);
-                            if (map.TryGetValue("message", out v)) message = Convert.ToString(v);
+                            if (map.TryGetValue("tag", out v)) tag = Convert.ToString(v);
+                            if (map.TryGetValue("group", out v)) group = Convert.ToString(v);
                         }
-                        form.BeginInvoke(new Action<string, string>(form.ShowToast), title, message);
+                        form.BeginInvoke(new Action<string, string>(form.DismissToast), tag, group);
                         response = "{\"ok\":true}";
                     }
                     else
@@ -1421,6 +1740,69 @@ namespace DshDesktop
             wrap["exit"] = r.Exit;
             wrap["output"] = r.Out + (r.Err.Length > 0 ? (r.Out.Length > 0 ? "\r\n" : "") + r.Err : "");
             return ser.Serialize(wrap);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct NotificationUserInput
+    {
+        [MarshalAs(UnmanagedType.LPWStr)] public string Key;
+        [MarshalAs(UnmanagedType.LPWStr)] public string Value;
+    }
+
+    [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("4D997763-6F2E-449E-BE08-B7DF2203C792")]
+    public interface INotificationActivationCallback
+    {
+        [PreserveSig]
+        int Activate(
+            [MarshalAs(UnmanagedType.LPWStr)] string appUserModelId,
+            [MarshalAs(UnmanagedType.LPWStr)] string invokedArgs,
+            [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 3)] NotificationUserInput[] data,
+            uint dataCount);
+    }
+
+    [ComVisible(true)]
+    [Guid(Program.ToastActivatorClsid)]
+    [ClassInterface(ClassInterfaceType.None)]
+    public class NotificationActivator : INotificationActivationCallback
+    {
+        public int Activate(string appUserModelId, string invokedArgs, NotificationUserInput[] data, uint dataCount)
+        {
+            try
+            {
+                string toastArg = invokedArgs ?? "";
+                string json = null;
+                if (toastArg.StartsWith("toast=", StringComparison.OrdinalIgnoreCase))
+                    json = Uri.UnescapeDataString(toastArg.Substring("toast=".Length));
+                else if (toastArg.Length > 0)
+                    json = toastArg;
+                if (string.IsNullOrEmpty(json)) return 0;
+                string reply = null;
+                if (data != null)
+                {
+                    int n = (int)dataCount;
+                    if (n > data.Length) n = data.Length;
+                    for (int i = 0; i < n; i++)
+                        if (data[i].Key == "reply") reply = data[i].Value;
+                }
+                if (!string.IsNullOrEmpty(reply))
+                {
+                    try
+                    {
+                        JavaScriptSerializer ser2 = new JavaScriptSerializer();
+                        Dictionary<string, object> map = ser2.Deserialize<Dictionary<string, object>>(json);
+                        if (map != null)
+                        {
+                            map["text"] = reply;
+                            json = ser2.Serialize(map);
+                        }
+                    }
+                    catch { }
+                }
+                Program.ForwardToastJson(json);
+            }
+            catch { }
+            return 0;
         }
     }
 }

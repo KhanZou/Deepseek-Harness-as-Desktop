@@ -55,4 +55,27 @@ public class ShortcutAppId
             Marshal.FreeCoTaskMem(pv.pwszVal);
         }
     }
+
+    public static void SetToastActivator(string lnkPath, string clsid)
+    {
+        Guid iid = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
+        IPropertyStore store;
+        int hr = SHGetPropertyStoreFromParsingName(lnkPath, IntPtr.Zero, 2, ref iid, out store);
+        if (hr != 0) throw new COMException("SHGetPropertyStoreFromParsingName failed: 0x" + hr.ToString("X8"));
+        PROPERTYKEY key = new PROPERTYKEY();
+        key.fmtid = new Guid("529A9E6B-6587-4F23-AB9E-9C7D683E3C50"); // PKEY_AppUserModel_ToastActivatorCLSID
+        key.pid = 6;
+        PROPVARIANT pv = new PROPVARIANT();
+        pv.vt = 31; // VT_LPWSTR
+        pv.pwszVal = Marshal.StringToCoTaskMemUni("{" + clsid + "}");
+        try
+        {
+            store.SetValue(ref key, ref pv);
+            store.Commit();
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(pv.pwszVal);
+        }
+    }
 }

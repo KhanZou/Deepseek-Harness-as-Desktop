@@ -27,6 +27,15 @@ window.__ModuleLoader__.load({
 				autoStartHint: "登录 Windows 后自动启动 DshDesktop.exe 并拉起服务。",
 				notifyLabel: "会话完成时发送 Windows 通知",
 				notifyHint: "后台任务每完成一轮回答，通过系统通知提醒你。",
+				notifyPreviewLabel: "通知显示回答预览",
+				notifyPreviewHint: "会话完成通知中附带本轮实际回答内容摘要。",
+				quickReplyLabel: "通知内快捷回复",
+				quickReplyHint: "通知内提供输入框与回复按钮，可直接回复或布置下一个任务到同一会话。",
+				approvalNotifyLabel: "权限请求通知",
+				approvalNotifyHint: "工具请求更高权限时通过 Windows 通知询问，可在通知内批准或拒绝。",
+				previewMaxLabel: "预览长度",
+				testNotifyAdvanced: "发送带预览/回复的测试通知",
+				notifAdvancedSent: "已发送带交互的测试通知（查看 Windows 通知中心）",
 				trayHintLabel: "缩到托盘时显示提示",
 				trayHintHint: "关闭后最小化/关闭窗口不再反复弹出托盘提示。",
 				testNotify: "发送测试通知",
@@ -43,6 +52,15 @@ window.__ModuleLoader__.load({
 				autoStartHint: "Start DshDesktop.exe and the backend automatically after you log in.",
 				notifyLabel: "Notify when a task completes",
 				notifyHint: "Shows a Windows notification when a background task finishes a turn.",
+				notifyPreviewLabel: "Show answer preview in notification",
+				notifyPreviewHint: "Completion notifications include a short preview of the actual reply.",
+				quickReplyLabel: "Quick reply in notification",
+				quickReplyHint: "The toast includes a text input and reply button to continue the same session.",
+				approvalNotifyLabel: "Permission request notifications",
+				approvalNotifyHint: "Tool permission escalations ask through a Windows notification with approve/reject buttons.",
+				previewMaxLabel: "Preview length",
+				testNotifyAdvanced: "Send interactive test notification",
+				notifAdvancedSent: "Interactive test notification sent (see Windows Action Center)",
 				trayHintLabel: "Tray balloon on minimize/close",
 				trayHintHint: "When off, minimizing/closing no longer shows a repeated tray balloon.",
 				testNotify: "Send test notification",
@@ -72,6 +90,25 @@ window.__ModuleLoader__.load({
 			}).catch(function () { });
 		}
 
+		function sendTestNotifyAdvanced() {
+			fetchJson(API + "/api/notify", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					kind: "turn",
+					title: "任务完成 / Task completed",
+					message: "回答预览：已按计划完成通知优化，包含预览、快捷回复与权限审批按钮，下一步可继续验证。",
+					sessionId: "",
+					turn: "0",
+					reason: "completed",
+					tools: "bash, fs",
+					quickReply: true,
+					replyPlaceholder: "回复或布置下一个任务…",
+					replyLabel: "回复 / Reply",
+				}),
+			}).catch(function () { });
+		}
+
 		function apply(ctx) {
 			ctx.effect(function () {
 				return ctx.locale.register(NS, dict);
@@ -88,8 +125,17 @@ window.__ModuleLoader__.load({
 					], defaultValue: "tray" });
 				sf.registerItem({ tabId: "desktop", key: "autoStart", type: "toggle", label: t("autoStartLabel"), hint: t("autoStartHint"), defaultValue: false });
 				sf.registerItem({ tabId: "desktop", key: "notifyOnComplete", type: "toggle", label: t("notifyLabel"), hint: t("notifyHint"), defaultValue: true });
+				sf.registerItem({ tabId: "desktop", key: "notifyPreview", type: "toggle", label: t("notifyPreviewLabel"), hint: t("notifyPreviewHint"), defaultValue: true });
+				sf.registerItem({ tabId: "desktop", key: "quickReply", type: "toggle", label: t("quickReplyLabel"), hint: t("quickReplyHint"), defaultValue: true });
+				sf.registerItem({ tabId: "desktop", key: "approvalNotify", type: "toggle", label: t("approvalNotifyLabel"), hint: t("approvalNotifyHint"), defaultValue: true });
+				sf.registerItem({ tabId: "desktop", key: "previewMaxChars", type: "select", label: t("previewMaxLabel"), options: [
+					{ value: "200", label: "200" },
+					{ value: "300", label: "300" },
+					{ value: "500", label: "500" },
+				], defaultValue: "300" });
 				sf.registerItem({ tabId: "desktop", key: "trayHint", type: "toggle", label: t("trayHintLabel"), hint: t("trayHintHint"), defaultValue: false });
 				sf.registerItem({ tabId: "desktop", key: "testNotify", type: "action", label: t("testNotify"), action: sendTestNotify });
+				sf.registerItem({ tabId: "desktop", key: "testNotifyAdvanced", type: "action", label: t("testNotifyAdvanced"), action: sendTestNotifyAdvanced });
 				sf.registerItem({ tabId: "desktop", key: "skinGalleryHint", type: "custom",
 					render: function () {
 						return h("div", { style: { fontSize: "12px", opacity: ".75", padding: "4px 0" } }, t("skinGalleryHint"));

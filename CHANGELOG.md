@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.8.0] - 2026-08-14
+
+### Added
+- **Interactive Windows notifications** (`dsh-desktop-window`):
+  - **Answer preview**: completion toasts show a bounded preview of the actual
+    reply; the title maps the turn-end reason and the tools used are listed.
+  - **Quick reply in the toast**: completion toasts carry a text input and a
+    *Reply* button; the typed text is sent to the same session through the
+    official `POST /api/session.prompt` (queue mode).
+  - **Permission-request toasts**: sandbox permission escalations surface as
+    toasts with *Allow once / Reject* buttons, answered through the official
+    `POST /api/respond`; the host plugin subscribes to the DSH mux stream
+    (`ws://.../api/events.mux`) as a read-only observer.
+  - New shell endpoints: `POST /api/toast-action` (toast activation),
+    `POST /api/dismiss` (remove a toast by tag).
+  - Toast activation: the Start-Menu shortcut now sets `ToastActivatorCLSID`;
+    button clicks launch `DshDesktop.exe` with a `toast=<urlencoded json>`
+    argument forwarded to the running instance; a COM activator
+    (`INotificationActivationCallback`) reads in-toast text input.
+  - New config toggles: `notifyPreview`, `quickReply`, `approvalNotify`,
+    `previewMaxChars`, `approvalTimeoutSec`.
+- **Settings UI** (`dsh-desktop-settings`): Desktop tab adds toggles for answer
+  preview, quick reply and permission-request notifications, a preview-length
+  selector, and an interactive test-notification action.
+- **CLI** (`dsh-desktop-framework`): new `notify`, `notify-turn`,
+  `notify-approval` commands; `DSH_DESKTOP_API` env var overrides the shell API
+  base; HTTP helper sends `Content-Length` and a timeout.
+
 ## [0.7.0] - 2026-08-14
 
 ### Added

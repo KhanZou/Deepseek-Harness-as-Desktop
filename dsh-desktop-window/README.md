@@ -64,3 +64,15 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /
 ```
 
 许可证：客户端代码 MIT；鲸鱼图标为 DeepSeek 官方品牌图标（仅个人使用）。
+
+## 通知功能（v0.8.0）
+
+- **回答预览**：会话完成通知显示本轮实际回答摘要（由 `assistant/message` 文本折叠，按 `previewMaxChars` 截断），标题按结束原因映射（完成/出错/中断/阻塞/达上限/会话中断），并列出调用过的工具。
+- **通知内快捷回复**：完成通知带输入框与“回复”按钮，点击后把输入内容经 dsh 官方 `POST /api/session.prompt`（queue 模式）发送到同一会话；若通知内输入不可用（COM 激活未生效），回复按钮退化为聚焦窗口。
+- **权限请求通知**：沙箱权限升级（approval 流程）弹出带“允许一次 / 拒绝”按钮的通知，应答经官方 `POST /api/respond` 提交；宿主插件以只读方式订阅 `ws://<web>/api/events.mux` 获取审批帧（含应答所需的 rpcId），按 `approval/resolved` 自动清理已处理的 toast。
+- **交互式 toast 激活**：开始菜单快捷方式写入 `ToastActivatorCLSID`；点击 toast 按钮时 Windows 以 `toast=<urlencoded json>` 参数启动 `DshDesktop.exe`，已有实例时转发到其 `POST /api/toast-action` 处理；输入框文本经 COM 激活器（`INotificationActivationCallback`）读取。
+- **新增/变更 API**：
+  - `POST /api/notify`：payload 扩展为结构化对象（`kind: basic|turn|approval`，及 `sessionId/turn/reason/tools/approvalId/rpcId/toolName/args/tag/group/quickReply/replyLabel/replyPlaceholder/approveLabel/rejectLabel`）。
+  - `POST /api/toast-action`：接收 `{action: reply|approve|reject|open, sessionId, rpcId, approvalId, text}`，由 exe 调用后端 `/api/session.prompt` 或 `/api/respond`。
+  - `POST /api/dismiss`：`{tag, group}` 按 tag 移除通知中心中的 toast。
+- **新增配置项**（`config.json`）：`notifyPreview`（默认 true）、`quickReply`（默认 true）、`approvalNotify`（默认 true）、`previewMaxChars`（默认 300）、`approvalTimeoutSec`（默认 600）。

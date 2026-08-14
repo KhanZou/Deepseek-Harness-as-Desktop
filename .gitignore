@@ -13,3 +13,5 @@ sdk/
 # misc
 .DS_Store
 Thumbs.db
+dsh-desktop-window/shell/.toast.json
+dsh-desktop-window/shell/.dismiss.json
