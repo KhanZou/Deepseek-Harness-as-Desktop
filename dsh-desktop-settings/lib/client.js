@@ -41,6 +41,12 @@ window.__ModuleLoader__.load({
 				testNotify: "发送测试通知",
 				notifSent: "测试通知已发送（查看 Windows 通知中心）",
 				skinGalleryHint: "皮肤请到「皮肤中心」标签页管理（dsh-skin-gallery 插件）。",
+				updateClient: "一键更新客户端",
+				updateClientHint: "从 GitHub 拉取最新客户端插件并安全部署，自动重启服务；本地设置、皮肤与对话会话均不受影响。",
+				updateRunning: "正在更新… 完成后客户端会自动重启",
+				updateIdle: "等待更新",
+				updateConfirm: "确定要一键更新客户端吗？将拉取 GitHub 最新版本、安全部署并重启服务（本地数据与会话不受影响）。",
+				updateStartedNotify: "客户端更新已启动，完成后会自动重启。",
 			},
 			en: {
 				nav: "Desktop",
@@ -66,6 +72,12 @@ window.__ModuleLoader__.load({
 				testNotify: "Send test notification",
 				notifSent: "Test notification sent (see Windows Action Center)",
 				skinGalleryHint: "Manage skins in the Skin Center tab (dsh-skin-gallery plugin).",
+				updateClient: "One-click update client",
+				updateClientHint: "Pull the latest client plugins from GitHub, deploy them safely and restart the service. Local settings, skins and conversation sessions are preserved.",
+				updateRunning: "Updating… the app will restart automatically",
+				updateIdle: "Idle",
+				updateConfirm: "Update the client now? The latest code will be pulled from GitHub, deployed safely and the service restarted (local data and sessions are preserved).",
+				updateStartedNotify: "Client update started; the app will restart when done.",
 			},
 		};
 
@@ -109,6 +121,50 @@ window.__ModuleLoader__.load({
 			}).catch(function () { });
 		}
 
+
+		var UPDATE_LOG_PATH = "D:\\dsh-desktop-window\\update.log";
+		var updateState = { running: false, tail: "", inFlight: false };
+
+		function readUpdateLog() {
+			return fetchJson(API + "/api/fs/read?path=" + encodeURIComponent(UPDATE_LOG_PATH))
+				.then(function (r) { return (r && r.ok && r.content) ? String(r.content) : ""; })
+				.catch(function () { return ""; });
+		}
+
+		function refreshUpdateStatus() {
+			if (updateState.inFlight) return;
+			updateState.inFlight = true;
+			fetchJson(API + "/api/fs/list?dir=" + encodeURIComponent("D:\\dsh-desktop-window"))
+				.then(function (r) {
+					var items = (r && r.items) || [];
+					updateState.running = items.some(function (f) { return f.name === "update.lock"; });
+					return readUpdateLog();
+				})
+				.then(function (text) {
+					var lines = String(text || "").replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+					updateState.tail = lines.slice(-8).join("\n");
+					updateState.inFlight = false;
+				})
+				.catch(function () { updateState.inFlight = false; });
+		}
+
+		function startUpdate() {
+			if (!window.confirm(t("updateConfirm"))) return;
+			updateState.running = true;
+			updateState.tail = "";
+			var cmd = "start \"\" /min powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"D:\\dsh-desktop-window\\update-client.ps1\"";
+			fetchJson(API + "/api/shell/exec", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ dir: "D:\\dsh-desktop-window", command: cmd }),
+			}).catch(function () { });
+			fetchJson(API + "/api/notify", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title: "DeepSeek Harness", message: t("updateStartedNotify") }),
+			}).catch(function () { });
+		}
+
 		function apply(ctx) {
 			ctx.effect(function () {
 				return ctx.locale.register(NS, dict);
@@ -136,6 +192,27 @@ window.__ModuleLoader__.load({
 				sf.registerItem({ tabId: "desktop", key: "trayHint", type: "toggle", label: t("trayHintLabel"), hint: t("trayHintHint"), defaultValue: false });
 				sf.registerItem({ tabId: "desktop", key: "testNotify", type: "action", label: t("testNotify"), action: sendTestNotify });
 				sf.registerItem({ tabId: "desktop", key: "testNotifyAdvanced", type: "action", label: t("testNotifyAdvanced"), action: sendTestNotifyAdvanced });
+
+				sf.registerItem({ tabId: "desktop", key: "updateClient", type: "custom",
+					render: function () {
+						refreshUpdateStatus();
+						var divider = { borderTop: "1px solid rgba(128,128,128,.25)", marginTop: "12px", paddingTop: "12px" };
+						return h("div", { style: divider },
+							h("div", { style: { fontWeight: 600, marginBottom: "4px" } }, t("updateClient")),
+							h("div", { style: { fontSize: "0.857em", opacity: ".8", marginBottom: "10px" } }, t("updateClientHint")),
+							h("div", { style: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" } },
+								h("button", {
+									onClick: startUpdate,
+									disabled: updateState.running,
+									style: { padding: "8px 16px", cursor: "pointer" },
+								}, t("updateClient")),
+								h("span", { style: { fontSize: "0.857em", opacity: ".8" } },
+									updateState.running ? t("updateRunning") : t("updateIdle"))),
+							updateState.tail
+								? h("pre", { style: { marginTop: "8px", fontSize: "0.75em", lineHeight: "1.4", opacity: ".75", whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: "140px", overflow: "auto", background: "rgba(128,128,128,.08)", padding: "8px", borderRadius: "6px" } }, updateState.tail)
+								: null
+						);
+					} });
 				sf.registerItem({ tabId: "desktop", key: "skinGalleryHint", type: "custom",
 					render: function () {
 						return h("div", { style: { fontSize: "0.75em", opacity: ".75", padding: "4px 0" } }, t("skinGalleryHint"));
