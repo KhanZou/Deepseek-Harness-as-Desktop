@@ -120,7 +120,8 @@ if (-not $SkipGitPull) {
     if ($LASTEXITCODE -ne 0) {
       Log "Local checkout is ahead of origin/main (unpushed commits) - deploying the local checkout. Push to GitHub when ready so future updates can fast-forward."
     } else {
-      Log 'Updated to origin/main.'
+      $newHead = (& $gitExe -C $RepoDir rev-parse HEAD 2>$null).Trim()
+      if ($newHead -eq $origin) { Log 'Updated to origin/main.' } else { Log "Deploying local checkout (ahead of origin/main). Push to GitHub when ready so future updates can fast-forward." }
     }
   } else {
     Log 'Already up to date with origin/main.'
