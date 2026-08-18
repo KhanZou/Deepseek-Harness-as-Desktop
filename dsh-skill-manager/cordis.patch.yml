@@ -1,0 +1,4 @@
+# dsh-skill-manager bundle patch: inserts the skill-manager client row.
+- insert:
+    - id: skill-manager
+      name: '@dsh-external/dsh-client-ui-skill-manager'

@@ -1,0 +1,39 @@
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--ds-ctl-switch-track, rgba(128, 128, 128, 0.35));
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex: none;
+}
+
+.toggle.on {
+  background: var(--ds-accent, #4f7cff);
+}
+
+.toggle.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.on .thumb {
+  transform: translateX(14px);
+}

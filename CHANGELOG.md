@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0] - 2026-08-18
+
+### Added
+- **`dsh-skill-manager` external plugin**: per-workspace skill manager extracted
+  from the dsh monorepo WIP (`@deepseek-ai/dsh-client-ui-skill-manager`). Ships
+  the SkillsManager UI as an installable plugin that depends on the published
+  `@deepseek-ai/dsh-*` workspace packages. It enables/disables project & global
+  skills from the workspace row menu and copies/applies `.dsh/skills.json`
+  between projects. Requires the dsh host-side skill-config support (see
+  `docs/skill-manager-host-support.md`), which is preserved in the
+  `D:\deepseek-harness` stash as WIP.
+
 ## [0.8.2] - 2026-08-14
 
 ### Fixed / Cleaned
