@@ -1,6 +1,9 @@
 // dsh-git-graph: a "Git Graph" conversation view tab for the DSH Web UI.
-// Shows a branch selector plus a commit-history swimlane graph, backed by the
-// local DshDesktop.exe API (/api/git/branches, /api/git/log, /api/git/checkout).
+// Shows, grouped by DSH workspace (project), a branch selector plus a
+// commit-history swimlane graph, backed by the local DshDesktop.exe API
+// (/api/git/branches, /api/git/log, /api/git/checkout). The project list
+// comes from the same-origin workspace.list RPC, so every row clearly
+// belongs to the project section it is rendered under.
 
 window.__ModuleLoader__.load({
 	id: "@dsh-external/dsh-client-ui-git-graph",
@@ -18,7 +21,7 @@ window.__ModuleLoader__.load({
 
 		var dict = {
 			zh: {
-				nav: "Git 图谱",
+				nav: "Git 图鉴",
 				branch: "分支",
 				current: "当前",
 				checkout: "切换到此分支",
@@ -32,6 +35,11 @@ window.__ModuleLoader__.load({
 				by: "作者",
 				search: "搜索提交…",
 				noMatch: "没有匹配的提交",
+				projects: "项目（Git 仓库）",
+				notRepo: "非 Git 项目",
+				noProjects: "没有检测到 Git 项目（已检查所有工作区）",
+				fallbackDir: "工作目录",
+				loadingProjects: "正在扫描各项目的 Git 仓库…",
 			},
 			en: {
 				nav: "Git Graph",
@@ -48,6 +56,11 @@ window.__ModuleLoader__.load({
 				by: "by",
 				search: "Search commits…",
 				noMatch: "No matching commits",
+				projects: "Projects (git repos)",
+				notRepo: "Not a git repo",
+				noProjects: "No git projects detected (scanned all workspaces)",
+				fallbackDir: "Work dir",
+				loadingProjects: "Scanning workspaces for git repos…",
 			},
 		};
 		var t = null;
@@ -56,10 +69,33 @@ window.__ModuleLoader__.load({
 			return fetch(url, options).then(function (r) { return r.json(); });
 		}
 
+		function rpcId() {
+			return (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID()
+				: (Date.now() + "-" + Math.random().toString(16).slice(2));
+		}
+
+		// Same-origin DSH RPC (workspace.list) so we know every project's path.
+		function dshRpc(method, payload) {
+			return fetch("/api/" + method, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ type: "client-request", rpcId: rpcId(), method: method, payload: payload || {} }),
+			}).then(function (r) { return r.json(); });
+		}
+
+		function listWorkspaces() {
+			return dshRpc("workspace.list", {}).then(function (m) {
+				if (m && m.result && m.result.ok && m.result.value && Array.isArray(m.result.value.items)) {
+					return m.result.value.items;
+				}
+				return null;
+			}).catch(function () { return null; });
+		}
+
 		function workDir() {
 			return fetchJson(API + "/api/settings").then(function (m) {
 				return (m && m.serverWorkDir) || "";
-			});
+			}).catch(function () { return ""; });
 		}
 
 		// ---- swimlane layout ----------------------------------------------
@@ -76,11 +112,9 @@ window.__ModuleLoader__.load({
 					lane = lanes.length;
 					lanes.push(c.hash);
 				}
-				// resolve this commit: remove from lanes
 				lanes.splice(lane, 1);
 				var parents = c.parents || [];
 				if (parents.length > 0) {
-					// first parent continues the lane
 					var ins = [parents[0]];
 					for (var p = 1; p < parents.length; p++) ins.push(parents[p]);
 					for (var k = ins.length - 1; k >= 0; k--) lanes.splice(lane, 0, ins[k]);
@@ -102,9 +136,19 @@ window.__ModuleLoader__.load({
 			return m;
 		}
 
-		// ---- component -----------------------------------------------------
+		function shortTitle(ws) {
+			var title = (ws && ws.title) || "";
+			if (title) return title;
+			var p = (ws && ws.path) || "";
+			var parts = p.split(/[\\/]/);
+			return parts[parts.length - 1] || p;
+		}
 
-		function GitGraphView() {
+		// ---- per-project graph --------------------------------------------
+
+		function ProjectGraph(props) {
+			var ws = props.ws;
+			var tt = props.t;
 			var branchesState = useState([]);
 			var branches = branchesState[0];
 			var setBranches = branchesState[1];
@@ -129,61 +173,62 @@ window.__ModuleLoader__.load({
 			var qState = useState("");
 			var q = qState[0];
 			var setQ = qState[1];
+			var dir = ws.path || "";
 
 			function loadBranches() {
-				workDir().then(function (wd) {
-					return fetchJson(API + "/api/git/branches?dir=" + encodeURIComponent(wd));
-				}).then(function (m) {
+				return fetchJson(API + "/api/git/branches?dir=" + encodeURIComponent(dir)).then(function (m) {
 					if (m && m.ok) {
 						setBranches(m.branches || []);
 						setCurrent(m.current || "");
-						if (!branch || branch === "") setBranch(m.current || ((m.branches || [])[0] || ""));
+						setBranch(function (prev) {
+							if (prev && prev !== "") return prev;
+							return m.current || ((m.branches || [])[0] || "");
+						});
+						return true;
 					}
-				}).catch(function () { });
+					return false;
+				}).catch(function () { return false; });
 			}
 
 			function loadLog() {
 				setLoading(true);
 				setErr("");
-				workDir().then(function (wd) {
-					var url = API + "/api/git/log?dir=" + encodeURIComponent(wd) + "&branch=" + encodeURIComponent(branch || "HEAD") + "&limit=200";
-					return fetchJson(url);
-				}).then(function (m) {
+				return fetchJson(API + "/api/git/log?dir=" + encodeURIComponent(dir) + "&branch=" + encodeURIComponent(branch || "HEAD") + "&limit=200").then(function (m) {
 					if (m && m.ok) {
 						setRows(layoutCommits(m.commits || []));
 					} else {
 						setRows([]);
-						setErr((m && m.error) || t("failed"));
+						setErr((m && m.error) || tt("failed"));
 					}
 				}).catch(function () {
 					setRows([]);
-					setErr(t("failed"));
+					setErr(tt("failed"));
 				}).finally(function () { setLoading(false); });
 			}
 
 			useEffect(function () {
-				loadBranches();
-			}, []);
+				loadBranches().then(function (ok) {
+					if (!ok) { setLoading(false); setErr(tt("failed")); }
+				});
+			}, [dir]);
 
 			useEffect(function () {
 				if (branch) loadLog();
-			}, [branch]);
+			}, [branch, dir]);
 
 			function doCheckout() {
 				if (!branch) return;
-				workDir().then(function (wd) {
-					return fetchJson(API + "/api/git/checkout", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ dir: wd, branch: branch }),
-					});
+				fetchJson(API + "/api/git/checkout", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ dir: dir, branch: branch }),
 				}).then(function (m) {
 					if (m && m.ok) {
-						setMsg(t("checkoutDone") + branch);
+						setMsg(tt("checkoutDone") + branch);
 						loadBranches();
 						loadLog();
 					} else {
-						setMsg(t("checkoutFail") + ((m && m.error) || ""));
+						setMsg(tt("checkoutFail") + ((m && m.error) || ""));
 					}
 					setTimeout(function () { setMsg(""); }, 4000);
 				}).catch(function () { });
@@ -198,29 +243,33 @@ window.__ModuleLoader__.load({
 					c.short.toLowerCase().indexOf(q.toLowerCase()) >= 0;
 			}) : rows;
 
-			return h("div", { style: { padding: "16px", display: "flex", flexDirection: "column", height: "100%", minHeight: 0, boxSizing: "border-box" } },
-				h("div", { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", paddingBottom: "10px" } },
-					h("label", { style: { fontSize: "13px", opacity: ".8" } }, t("branch") + ":"),
-					h("select", {
-						value: branch,
-						onChange: function (e) { setBranch(e.target.value); },
-						style: { padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(128,128,128,.35)", background: "transparent", color: "inherit", fontSize: "13px" },
-					}, branches.map(function (b) {
-						return h("option", { key: b, value: b }, b + (b === current ? " (" + t("current") + ")" : ""));
-					})),
-					h("button", { onClick: doCheckout, disabled: !branch || branch === current, style: btnStyle() }, t("checkout")),
-					h("button", { onClick: loadLog, style: btnStyle() }, t("refresh")),
-					h("input", { value: q, onChange: function (e) { setQ(e.target.value); }, placeholder: t("search"), style: { flex: 1, minWidth: "140px", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(128,128,128,.35)", background: "transparent", color: "inherit", fontSize: "12px" } })),
-				msg ? h("div", { style: { padding: "6px 10px", marginBottom: "8px", borderRadius: "8px", border: "1px solid rgba(77,107,254,.5)", fontSize: "13px", maxWidth: "720px" } }, msg) : null,
-				loading ? h("div", { style: { padding: "18px", opacity: ".6" } }, t("loading"))
-					: err ? h("div", { style: { padding: "14px", opacity: ".75", fontSize: "13px", maxWidth: "720px" } }, err)
+			return h("div", { style: { border: "1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.22))", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px" } },
+				h("div", { style: { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", paddingBottom: "8px" } },
+					h("span", { style: { fontWeight: 600, fontSize: "13px" } }, shortTitle(ws)),
+					h("span", { style: { fontSize: "12px", opacity: ".6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "340px" } }, dir),
+					h("span", { style: { marginLeft: "auto", display: "inline-flex", gap: "6px", alignItems: "center", flexWrap: "wrap" } },
+						h("label", { style: { fontSize: "12px", opacity: ".8" } }, tt("branch") + ":"),
+						h("select", {
+							value: branch,
+							onChange: function (e) { setBranch(e.target.value); },
+							style: { padding: "3px 6px", borderRadius: "6px", border: "1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35))", background: "transparent", color: "inherit", fontSize: "12px" },
+						}, branches.map(function (b) {
+							return h("option", { key: b, value: b }, b + (b === current ? " (" + tt("current") + ")" : ""));
+						})),
+						h("button", { onClick: doCheckout, disabled: !branch || branch === current, style: btnStyle() }, tt("checkout")),
+						h("button", { onClick: loadLog, style: btnStyle() }, tt("refresh")))),
+				msg ? h("div", { style: { padding: "5px 10px", marginBottom: "6px", borderRadius: "8px", border: "1px solid color-mix(in srgb, var(--dsw-alias-accent, #4d6bfe) 45%, transparent)", fontSize: "12px", maxWidth: "720px" } }, msg) : null,
+				h("input", { value: q, onChange: function (e) { setQ(e.target.value); }, placeholder: tt("search"), style: { width: "100%", boxSizing: "border-box", padding: "4px 8px", marginBottom: "6px", borderRadius: "6px", border: "1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35))", background: "transparent", color: "inherit", fontSize: "12px" } }),
+				loading ? h("div", { style: { padding: "12px", opacity: ".6", fontSize: "12px" } }, tt("loading"))
+					: err ? h("div", { style: { padding: "10px", opacity: ".75", fontSize: "12px", maxWidth: "720px" } }, err)
 					: filtered.length === 0
-						? h("div", { style: { padding: "18px", opacity: ".55", fontSize: "13px" } }, q ? t("noMatch") : t("empty"))
-						: h("div", { style: { flex: 1, overflow: "auto", minHeight: 0, border: "1px solid rgba(128,128,128,.22)", borderRadius: "10px", padding: "6px 0" } },
+						? h("div", { style: { padding: "12px", opacity: ".55", fontSize: "12px" } }, q ? tt("noMatch") : tt("empty"))
+						: h("div", { style: { overflow: "auto", border: "1px solid var(--dsw-alias-border-l1, rgba(128,128,128,.12))", borderRadius: "8px", padding: "4px 0" } },
 							filtered.map(function (r) {
 								var c = r.commit;
-								return h("div", { key: c.hash, style: { display: "flex", alignItems: "center", minHeight: "30px", padding: "2px 10px", fontSize: "13px", borderBottom: "1px solid rgba(128,128,128,.08)" } },
-									h("div", { style: { width: (laneCount * laneW) + "px", minWidth: (laneCount * laneW) + "px", height: "30px", position: "relative", flex: "none" } },
+								return h("div", { key: c.hash, style: { display: "flex", alignItems: "center", minHeight: "28px", padding: "2px 8px", fontSize: "12px", borderBottom: "1px solid var(--dsw-alias-border-l1, rgba(128,128,128,.08))" } },
+									h("div", { style: { flex: "none", width: "92px", minWidth: "92px", fontSize: "11px", opacity: ".7", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--dsw-alias-label-secondary-foreground, inherit)" } }, shortTitle(ws)),
+									h("div", { style: { width: (laneCount * laneW) + "px", minWidth: (laneCount * laneW) + "px", height: "28px", position: "relative", flex: "none" } },
 										r.active.map(function (hash, li) {
 											var cont = r.next.indexOf(hash) >= 0;
 											return h("div", {
@@ -233,7 +282,7 @@ window.__ModuleLoader__.load({
 										}),
 										h("div", {
 											style: {
-												position: "absolute", left: (r.lane * laneW + laneW / 2 - 5) + "px", top: "9px",
+												position: "absolute", left: (r.lane * laneW + laneW / 2 - 5) + "px", top: "8px",
 												width: "10px", height: "10px", borderRadius: "50%",
 												background: "var(--dsw-alias-accent, #4d6bfe)",
 												border: "2px solid var(--dsw-alias-surface-raised, #1a1f38)",
@@ -242,16 +291,79 @@ window.__ModuleLoader__.load({
 										}),
 										(c.parents || []).length > 1 ? h("div", {
 											style: {
-												position: "absolute", left: (r.lane * laneW + laneW / 2) + "px", top: "14px",
+												position: "absolute", left: (r.lane * laneW + laneW / 2) + "px", top: "13px",
 												width: ((Math.max.apply(null, r.next.map(function (hash, li) { return li; }).concat([r.lane]))) * laneW + laneW / 2 - (r.lane * laneW + laneW / 2)) + "px",
 												height: "2px", background: "rgba(128,128,128,.5)",
 											},
 										}) : null),
-									h("div", { style: { flex: "none", fontFamily: "Consolas, monospace", color: "var(--dsw-alias-state-warning-primary, #e3b341)", width: "70px", minWidth: "70px" } }, c.short),
+									h("div", { style: { flex: "none", fontFamily: "Consolas, monospace", color: "var(--dsw-alias-state-warning-primary, #e3b341)", width: "62px", minWidth: "62px" } }, c.short),
 									h("div", { style: { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.subject),
-									h("div", { style: { flex: "none", fontSize: "12px", opacity: ".65", marginLeft: "12px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+									h("div", { style: { flex: "none", fontSize: "11px", opacity: ".6", marginLeft: "10px", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
 										c.author + " · " + fmtDate(c.date)));
 							})));
+		}
+
+		// ---- main view ----------------------------------------------------
+
+		function GitGraphView() {
+			var wsState = useState([]);
+			var workspaces = wsState[0];
+			var setWorkspaces = wsState[1];
+			var scanState = useState(true);
+			var scanning = scanState[0];
+			var setScanning = scanState[1];
+			var scanErrState = useState("");
+			var scanErr = scanErrState[0];
+			var setScanErr = scanErrState[1];
+			var fallbackState = useState(null);
+			var fallback = fallbackState[0];
+			var setFallback = fallbackState[1];
+
+			function refresh() {
+				setScanning(true);
+				setScanErr("");
+				listWorkspaces().then(function (items) {
+					if (items) {
+						items.sort(function (a, b) {
+							return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+						});
+						// Probe each workspace; keep only those that are git repos.
+						var probes = items.map(function (ws) {
+							return fetchJson(API + "/api/git/branches?dir=" + encodeURIComponent(ws.path || "")).then(function (m) {
+								return (m && m.ok) ? ws : null;
+							}).catch(function () { return null; });
+						});
+						return Promise.all(probes).then(function (gitWs) {
+							setWorkspaces(gitWs.filter(function (x) { return x; }));
+							setFallback(null);
+						});
+					}
+					setWorkspaces([]);
+					// fallback: single section for the configured work dir
+					return workDir().then(function (wd) {
+						if (!wd) return;
+						fetchJson(API + "/api/git/branches?dir=" + encodeURIComponent(wd)).then(function (m) {
+							setFallback({ path: wd, title: t("fallbackDir") + " · " + wd });
+						}).catch(function () { setFallback({ path: wd, title: t("fallbackDir") + " · " + wd }); });
+					});
+				}).catch(function () {
+					setWorkspaces([]);
+				}).finally(function () { setScanning(false); });
+			}
+
+			useEffect(function () { refresh(); }, []);
+
+			return h("div", { style: { padding: "16px", display: "flex", flexDirection: "column", height: "100%", minHeight: 0, boxSizing: "border-box", overflow: "auto" } },
+				h("div", { style: { display: "flex", alignItems: "center", gap: "8px", paddingBottom: "10px" } },
+					h("span", { style: { fontWeight: 600, fontSize: "13px" } }, t("projects")),
+					h("button", { onClick: refresh, style: btnStyle() }, t("refresh")),
+					h("span", { style: { fontSize: "12px", opacity: ".6" } }, scanning ? t("loadingProjects") : (workspaces.length + " 个工作区"))),
+				scanning ? h("div", { style: { padding: "18px", opacity: ".6" } }, t("loadingProjects"))
+					: (fallback ? h(ProjectGraph, { ws: fallback, t: t, key: "fallback" })
+						: workspaces.length === 0 ? h("div", { style: { padding: "18px", opacity: ".55", fontSize: "13px" } }, t("noProjects"))
+						: workspaces.map(function (ws) {
+							return h(ProjectGraph, { ws: ws, t: t, key: ws.workspaceId || ws.path });
+						})));
 		}
 
 		function fmtDate(iso) {
@@ -262,7 +374,7 @@ window.__ModuleLoader__.load({
 		}
 
 		function btnStyle() {
-			return { padding: "4px 12px", fontSize: "12px", borderRadius: "6px", cursor: "pointer", background: "transparent", border: "1px solid rgba(128,128,128,.4)", color: "inherit" };
+			return { padding: "3px 10px", fontSize: "12px", borderRadius: "6px", cursor: "pointer", background: "transparent", border: "1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.4))", color: "inherit" };
 		}
 
 		function apply(ctx) {

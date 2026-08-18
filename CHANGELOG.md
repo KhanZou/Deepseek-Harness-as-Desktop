@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.2] - 2026-08-18
+
+### Fixed
+- **`dsh-git-graph` rewritten around projects**: the Git Graph view no longer
+  shows one anonymous repo from `serverWorkDir`. It now lists every DSH
+  workspace (same-origin `workspace.list`), probes each with the shell git
+  API, and renders a **per-project section** (title + full path + branch
+  selector + checkout/refresh) with commit swimlane rows; every row carries a
+  project badge so it is always clear which project a commit belongs to.
+  Non-git workspaces are filtered out; the old `serverWorkDir` single-repo
+  view remains as a fallback when `workspace.list` is unavailable.
+- Fixed the plugin's garbled (double-encoded) zh labels.
+
 ## [0.9.1] - 2026-08-18
 
 ### Added
