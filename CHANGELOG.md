@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.1] - 2026-08-18
+
+### Added
+- **Bundled host patch** (`dsh-skill-manager/host-patch/`): the dsh host-side
+  skill-config support, packaged as a single `0001-feat-skill-manager-host.patch`
+  (rebased onto dsh 0.1.0-rc.7, zero-conflict 3-way apply) plus a one-click
+  `apply.ps1`. The README now documents why a pure-plugin variant is not
+  feasible against stock dsh and offers the patch (A) vs fork-branch (B) paths.
+
 ## [0.9.0] - 2026-08-18
 
 ### Added

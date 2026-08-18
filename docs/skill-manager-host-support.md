@@ -1,5 +1,10 @@
 # dsh-skill-manager：宿主支撑说明
 
+> 纯插件方案不可行（stock dsh 无逐技能启用机制、无通用文件读写 RPC、无行菜单插槽），
+> 因此把宿主改动以补丁形式随插件打包。**本仓库已附带基于 dsh 0.1.0-rc.7 的宿主补丁**
+> （`dsh-skill-manager/host-patch/`，63 个文件 +3125/-29，已验证零冲突应用），由你选择是否配置。
+
+
 `dsh-skill-manager`（原 dsh monorepo 内 `@deepseek-ai/dsh-client-ui-skill-manager`）**不是纯外部插件**：
 它依赖一批 **dsh 宿主侧改动**，这些改动在 stock dsh（含 0.1.0-rc.7）中不存在。要让插件可用，dsh 本身必须带上这些改动。
 
