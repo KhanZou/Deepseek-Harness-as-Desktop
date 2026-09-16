@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.3] - 2026-08-18
+
+### Docs
+- **`docs/qq-notifier-setup.md`**: end-to-end guide for wiring DeepSeek Harness
+  notifications + remote conversation through **QQ official bot** using
+  `dsh-notifier` — platform robot creation, `qq:account` inbound credentials,
+  `qq-bot` outbound fields (`targetType: user` + **openid**, not the QQ
+  number), `/pair` owner binding, enabling `converse` in the session policy,
+  verification commands, a troubleshooting table of the pitfalls hit in
+  practice, and multi-machine reuse notes. No secrets in the doc.
+
 ## [0.9.2] - 2026-08-18
 
 ### Fixed
