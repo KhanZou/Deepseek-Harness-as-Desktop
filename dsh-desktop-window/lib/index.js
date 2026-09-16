@@ -86,6 +86,22 @@ function exists(p) {
   }
 }
 
+// Newer dsh builds gate the web UI behind a per-process launch token that is
+// exchanged for a cookie. The connection service knows that token, so ask it
+// for the authenticated URL (falls back to the plain URL on older builds).
+function authUrl(ctx, url) {
+  try {
+    const conn = ctx && typeof ctx.get === 'function' ? ctx.get('connection') : undefined
+    if (conn && typeof conn.authenticatedUrl === 'function') {
+      const authed = conn.authenticatedUrl(url)
+      if (typeof authed === 'string' && authed.length > 0) return authed
+    }
+  } catch (e) {
+    log('authenticatedUrl failed:', e.message)
+  }
+  return url
+}
+
 function readConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
@@ -110,8 +126,8 @@ async function waitForServer(url, opts, disposedRef) {
   const deadline = Date.now() + opts.timeoutMs
   while (!disposedRef.disposed && Date.now() < deadline) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(3000) })
-      if (res.ok) return true
+      const res = await fetch(url, { signal: AbortSignal.timeout(3000), redirect: 'manual' })
+      if (res.ok || res.status === 303) return true
     } catch {
       // server not ready yet
     }
@@ -478,15 +494,16 @@ export function apply(ctx, config = {}) {
     const run = async () => {
       await sleep(cfg.delayMs)
       if (disposedRef.disposed || launched) return
-      log(`waiting for ${cfg.url} ...`)
-      const ok = await waitForServer(cfg.url, cfg, disposedRef)
+      const target = authUrl(ctx, cfg.url)
+      log(`waiting for ${target} ...`)
+      const ok = await waitForServer(target, cfg, disposedRef)
       if (!ok) {
         log(`server not reachable within ${cfg.timeoutMs}ms; window not opened`)
         return
       }
       if (disposedRef.disposed || launched) return
       launched = true
-      openWindow(cfg)
+      openWindow({ ...cfg, url: target })
     }
     run()
     return () => {
